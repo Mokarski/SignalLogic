@@ -6,12 +6,12 @@ LDFLAGS=-lpthread
 CFLAGS+=-g -Isrc
 #-DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 
-PROGRAMS=signalrouter client_virtual client_modbus
+PROGRAMS=signalrouter client_virtual client_modbus client_wago
 
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $^
 
-all: signalrouter client_virtual client_modbus
+all: signalrouter client_virtual client_modbus client_wago
 
 signalrouter: $(COMMON) src/server/signalrouter.o src/server/servercommand.o src/common/subscription.o src/server/serverevents.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
@@ -20,6 +20,9 @@ client_virtual: $(COMMON) src/client/client.o src/client/clientcommand.o src/vir
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client_modbus: $(COMMON) src/client/client.o src/client/clientcommand.o src/mbclient.o src/mbdev.o src/common/ringbuffer.o src/client/signalhelper.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+client_wago: $(COMMON) src/client/client.o src/client/clientcommand.o src/wagoclient.o src/mbdev.o src/common/ringbuffer.o src/client/signalhelper.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 upload: $(PROGRAMS) signals.cfg

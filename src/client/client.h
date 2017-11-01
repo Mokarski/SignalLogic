@@ -43,7 +43,7 @@ void event_write_signal(struct signal_s *signal, int value, struct execution_con
 void event_update_signal(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
 // Client init (can create userdata and store in the context)
-void client_init(struct execution_context_s *ctx);
+void client_init(struct execution_context_s *ctx, int argc, char **argv);
 
 // Main client thread procedure
 void client_thread_proc(struct execution_context_s *ctx);

@@ -135,7 +135,7 @@ void *create_mb_context() {
 #endif
 }
 
-void client_init(struct execution_context_s *ctx) {
+void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   struct signal_s *s;
   struct mb_device_list_s *dlist;
 

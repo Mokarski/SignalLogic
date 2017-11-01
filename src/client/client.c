@@ -24,7 +24,6 @@
 void *thread_worker(void *arg);
 
 int main(int argc, char **argv) {
-  FILE *s = fopen("signals.cfg", "r");
   char line[128];
   char name[128], *prefix;
   int i = 0, cnt = 0, found, running = 1;
@@ -79,7 +78,7 @@ int main(int argc, char **argv) {
   ring_buffer_init(&context.command_buffer);
   hash_create(&context.hash);
 
-  client_init(&context);
+  client_init(&context, argc, argv);
 
   int maxfd = context.event_socket > context.socket ? event[0] : context.socket;
 
