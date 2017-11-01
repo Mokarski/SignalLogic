@@ -46,8 +46,8 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
 	if (argc == 1){
 		 printf("Usage: virtualclient.exe signal_name \n");
 	 	 printf("Use:  signal_name [dev.] \n");
-	 	   get_signals(&ctx->signals, ctx->hash, "dev.", ctx->socket);
-                   subscribe(&ctx->signals, ctx->hash, "dev.", ctx->socket, SUB_UPDATE);
+	 	   get_signals(&ctx->signals, ctx->hash, "dev", ctx->socket);
+                   subscribe(&ctx->signals, ctx->hash, "dev", ctx->socket, SUB_UPDATE);
 	 } else {
 		  get_signals(&ctx->signals, ctx->hash, argv[1], ctx->socket);
 		  subscribe(&ctx->signals, ctx->hash, argv[1], ctx->socket, SUB_UPDATE);

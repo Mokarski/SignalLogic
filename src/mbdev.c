@@ -43,8 +43,8 @@ int  mb_dev_add_signal(struct mb_device_list_s *dlist, struct signal_s *signal) 
   struct mb_signal_list_s *signal_entry = malloc(sizeof(struct mb_signal_list_s));
 
   // Update max register number
-  if(addr > device->mb_reg_max) {
-    device->mb_reg_max = addr;
+  if(addr + 1 > device->mb_reg_max) {
+    device->mb_reg_max = addr + 1;
   }
 
   // Attach signal to the register
@@ -139,7 +139,7 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
   }
 
   // Update registers values
-  for(i = 0; i < dlist->dev_max; i ++) {
+  for(i = 0; i < dlist->dev_max + 1; i ++) {
     if(dlist->device[i].mb_reg_max > 0) {
       dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
     }

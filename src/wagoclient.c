@@ -25,22 +25,16 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
   modbus_t *mb_ctx = ctx->mb_context;
   uint16_t regs[MAX_REG];
   int i;
-
+  
   if(mb_ctx != NULL) {
     modbus_set_slave(mb_ctx, mbid);
-    int connected = modbus_connect(mb_ctx);
-    if(connected < 0) {
-      modbus_flush(mb_ctx);
-      modbus_close(mb_ctx);
-      return -1;
-    }
 
     int rc = modbus_read_registers(mb_ctx, 0, max_regs, regs);
 
     modbus_flush(mb_ctx);
-    modbus_close(mb_ctx);
 
     if(rc == -1) {
+			perror("Modbus read error");
       return -1;
     }
 
@@ -64,22 +58,13 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
   void *mb_ctx = ctx->mb_context;
   uint16_t regs[MAX_REG];
 
-  printf("Writing register %d:%d, %x\n", mbid, reg, value);
   if(mb_ctx != NULL) {
     modbus_set_slave(mb_ctx, mbid);
-    int connected = modbus_connect(mb_ctx);
-    if(connected < 0) {
-			printf("Writing modbus register failed: couldn't connect\n");
-      modbus_flush(mb_ctx);
-      modbus_close(mb_ctx);
-      return -1;
-    }
 
 		uint16_t registers[1] = { value };
 		int rc = modbus_write_registers(mb_ctx, reg, 1, registers); //write in device by register
 
     modbus_flush(mb_ctx);
-    modbus_close(mb_ctx);
 
     if(rc == -1) {
 			printf("Writing modbus register failed: write failed\n");
@@ -93,7 +78,6 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
   }
 #else // Testing without modbus library 
   usleep(10000);
-  printf("Writing device %d:%d: %d\n", mbid, reg, value);
   return 0;
 #endif
 }
@@ -118,17 +102,12 @@ void *create_mb_context() {
 	modbus_set_error_recovery(ctx, 1);
 	modbus_set_debug(ctx, 0);
 
+	modbus_set_slave(ctx, 1);
+	while(modbus_connect(ctx));
+
   struct timeval byte_timeout;
 	struct timeval response_timeout;
 
-  /* Define a new and too short timeout! */
-	response_timeout.tv_sec = 0;
-	response_timeout.tv_usec = 30000;
-	modbus_set_response_timeout(ctx, &response_timeout);
-
-  byte_timeout.tv_sec = 0;
-  byte_timeout.tv_usec = 30000;
-  modbus_set_byte_timeout(ctx, &byte_timeout);
 	return ctx;
 #else
   return NULL;
@@ -158,7 +137,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
 
 // Polling modbus devices
 void client_thread_proc(struct execution_context_s *ctx) {
-  printf("Started modbus proc thread\n");
+  printf("Started TCPmodbus wago proc thread\n");
   while(ctx->running) {
     struct signal_s *s;
 		int i = 0;
@@ -167,6 +146,7 @@ void client_thread_proc(struct execution_context_s *ctx) {
     while(s) {
 			i ++;
       if(mb_dev_check_signal(ctx->clientstate, s) == 1) {
+				printf("Signal %s updated; posting update\n", s->s_name);
         post_update_command(ctx, s->s_name, s->s_value);
       }
       s = s->next;
