@@ -27,10 +27,7 @@ int waitForFeedback(char *name, int timeout, volatile int *what) {
 		int exState;
 		oc  = Get_Signal(name);
 		if(oc) continue;
-		if(exState == RD)
-			usleep(10000);
-		else if(RB_EMPTY())
-			READ_SIGNAL(name);
+		usleep(10000);
 		clock_gettime(CLOCK_REALTIME, &now);
 		if((now.tv_sec > start.tv_sec + timeout) || (now.tv_sec == start.tv_sec + timeout) && (now.tv_nsec >= start.tv_nsec)) {
 			printf("Feedback waiting timeout\n");
@@ -45,11 +42,11 @@ void set_Diagnostic(int val) {
 	debugging = val;
 }
 void Pressure_Show() {
-	READ_SIGNAL("485.ad2.adc1_phys_value");
-	READ_SIGNAL("485.ad2.adc2_phys_value");
-	READ_SIGNAL("485.ad2.adc3_phys_value");
-	READ_SIGNAL("485.ad2.adc4_phys_value");
-	READ_SIGNAL("485.ad3.adc1_phys_value");
+	//READ_SIGNAL("485.ad2.adc1_phys_value");
+	//READ_SIGNAL("485.ad2.adc2_phys_value");
+	//READ_SIGNAL("485.ad2.adc3_phys_value");
+	//READ_SIGNAL("485.ad2.adc4_phys_value");
+	//READ_SIGNAL("485.ad3.adc1_phys_value");
   
 	int H1= Get_Signal("485.ad2.adc1_phys_value");
 	int H2= Get_Signal("485.ad2.adc2_phys_value");
@@ -69,8 +66,8 @@ void Pressure_Show() {
 }
 
 void Oil_Show(){
-	READ_SIGNAL ("485.ad1.adc1_phys_value");
-	READ_SIGNAL ("485.ad1.adc2_phys_value");
+	//READ_SIGNAL ("485.ad1.adc1_phys_value");
+	//READ_SIGNAL ("485.ad1.adc2_phys_value");
 	int Oil_level =Get_Signal ("485.ad1.adc1_phys_value");
 	int Oil_temp  =Get_Signal ("485.ad1.adc2_phys_value");
 	if (Oil_level >0) Oil_level=Oil_level/10;
@@ -80,8 +77,8 @@ void Oil_Show(){
 }
 
 void Water_Show() {
-	READ_SIGNAL("485.ad1.adc3_phys_value");
-	READ_SIGNAL("485.ad1.adc4_phys_value");
+	//READ_SIGNAL("485.ad1.adc3_phys_value");
+	//READ_SIGNAL("485.ad1.adc4_phys_value");
 	int water_flow = Get_Signal("485.ad1.adc3_phys_value");
 	int water_pressure = Get_Signal("485.ad1.adc4_phys_value");
 	if (water_pressure > 0) water_pressure=(water_pressure/25);
@@ -92,9 +89,9 @@ void Water_Show() {
 
 
 void Exec_Dev_Show() {
-	READ_SIGNAL("wago.oc_mui2.current_m1a");
-	READ_SIGNAL("wago.oc_mui2.current_m1b");
-	READ_SIGNAL("wago.oc_mui2.current_m1c");
+	//READ_SIGNAL("wago.oc_mui2.current_m1a");
+	//READ_SIGNAL("wago.oc_mui2.current_m1b");
+	//READ_SIGNAL("wago.oc_mui2.current_m1c");
 
 	int m1_Ia = Get_Signal("wago.oc_mui2.current_m1a");
 	int m1_Ib = Get_Signal("wago.oc_mui2.current_m1b");
@@ -114,7 +111,7 @@ void Exec_Dev_Show() {
 
 void Metan_Show() {
 
-	READ_SIGNAL("485.ad3.adc3_phys_value");
+	//READ_SIGNAL("485.ad3.adc3_phys_value");
 	int Metan = Get_Signal("485.ad3.adc3_phys_value");
 	if (Metan > 0) Metan =1;
 	WRITE_SIGNAL ("panel10.system_metan",Metan);
@@ -131,13 +128,13 @@ void System_Mode(int n) {
 	WRITE_SIGNAL("panel10.system_mode",n);
 }
 void System_Radio() {
-  READ_SIGNAL("485.rpdu485.connect");
+      //READ_SIGNAL("485.rpdu485.connect");
 	int radio_connect = Get_Signal("485.rpdu485.connect");
 	WRITE_SIGNAL("panel10.system_radio",radio_connect);
  }
 
 void Pultk_Mode(){
-	READ_SIGNAL("485.kb.kei1.post_conveyor");
+	//READ_SIGNAL("485.kb.kei1.post_conveyor");
 	int puk = Get_Signal("485.kb.kei1.post_conveyor");
 	WRITE_SIGNAL("panel10.system_pultk",puk);
 }
@@ -391,18 +388,7 @@ void control_Hydratation() {
 	if(!inProgress[HYDRATATION]) return;
 	int temp = Get_Signal("wago.oc_temp.pt100_m5");
 	int tempRelay = Get_Signal("wago.ts_m1.rele_T_m5");
-	static int lastWaterFlowState = RD;
-	int waterFlowState;
 
-	waterFlowState = Get_Signal_Ex(Get_Signal_Idx("485.ad1.adc3.flow"));
-
-	if(waterFlowState != lastWaterFlowState) {
-		READ_SIGNAL("485.ad1.adc3.flow");
-		waterFlowState = lastWaterFlowState;
-	}
-
-	//int water = Get_Signal("485.ad1.adc3.flow");
-	//WRITE_SIGNAL("panel10.system_water_flow",water);
 	if(tempRelay) {
 		printf("Organ temp relay error!\n");
 		stop_Hydratation();
@@ -415,7 +401,7 @@ void control_Organ() {
 	int temp = Get_Signal("wago.oc_temp.pt100_m1");
 	int tempRelay = Get_Signal("wago.ts_m1.rele_T_m1");
 	int waterFlow = Get_Signal("485.ad1.adc3.flow");
-	READ_SIGNAL("485.ad1.adc3.flow");
+	//READ_SIGNAL("485.ad1.adc3.flow");
 
 	if(waterFlow) {
 	}

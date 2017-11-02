@@ -65,7 +65,7 @@ volatile int buttons[32] = {0};
 volatile int joystick[32] = {0};
 
 int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what) {
-	int oc  = signal_get(name);       
+	int oc  = signal_get(g_Ctx, name);       
 	struct timespec start, now;
 	clock_gettime(CLOCK_REALTIME, &start);
 
@@ -73,12 +73,9 @@ int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what) {
 
 	while((oc != expect) && (*what)) {
 		int exState;
-		oc  = signal_get(name);
+		oc  = signal_get(g_Ctx, name);
 		if(oc == expect) continue;
-		if(exState == RD)
-			usleep(10000);
-		else if(RB_EMPTY())
-			READ_SIGNAL(name);
+		usleep(10000);
 		clock_gettime(CLOCK_REALTIME, &now);
 		if((now.tv_sec > start.tv_sec + timeout) || (now.tv_sec == start.tv_sec + timeout) && (now.tv_nsec >= start.tv_nsec)) {
 			printf("Result: %d\n", oc);
@@ -355,10 +352,10 @@ void Process_Pumping() {
 		if(g_mode != MODE_PUMPING) {
 			printf("Starting\n");
 			printf("Lighting the button contrast\n");
-			post_write_command(g_Ctx,"dev.485.kb.kbl.led_contrast", 50);
-			post_write_command(g_Ctx,"dev.panel10.system_state_code", 22);
+			WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
+			WRITE_SIGNAL("dev.panel10.system_state_code", 22);
 			printf("Lighting the start oil pump button\n");
-			post_write_command(g_Ctx,"dev.485.kb.kbl.start_oil_pump", 1);
+			WRITE_SIGNAL("dev.485.kb.kbl.start_oil_pump", 1);
 			
 			//post_read_command(g_Ctx,"dev.wago.oc_bki.M7");			
 			//post_read_command(g_Ctx,"dev.wago.oc_mdi1.oc_w_qf1");
@@ -383,10 +380,10 @@ void Process_Timeout() {
 	struct timespec start, now;
 	printf("Processing timeout for mode %d\n", g_mode);
 
-	post_write_command(g_Ctx, "dev.485.rsrs2.state_sound1_on", 1);
-	post_write_command(g_Ctx, "dev.485.rsrs2.state_sound1_led", 1);
-	post_write_command(g_Ctx, "dev.485.rsrs2.state_sound2_on"), 1);
-	post_write_command(g_Ctx, "dev.485.rsrs2.state_sound2_led"), 1);
+	WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_on", 1);
+	WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_led", 1);
+	WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_on", 1);
+	WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_led", 1);
 	
 	printf("Getting time\n", g_mode);
 	clock_gettime(CLOCK_REALTIME, &start);
@@ -404,10 +401,10 @@ void Process_Timeout() {
 		printf("Mode changed!!!!!!!!!!!!!!!!!!!!!!\n");
 	}
 
-	post_write_command(g_Ctx,"dev.485.rsrs2.state_sound1_on", 0);
-	post_write_command(g_Ctx,"dev.485.rsrs2.state_sound1_led", 0);
-	post_write_command(g_Ctx,"dev.485.rsrs2.state_sound2_on", 0);
-	post_write_command(g_Ctx,"dev.485.rsrs2.state_sound2_led", 0);
+	WRITE_SIGNAL("dev.485.rsrs2.state_sound1_on", 0);
+	WRITE_SIGNAL("dev.485.rsrs2.state_sound1_led", 0);
+	WRITE_SIGNAL("dev.485.rsrs2.state_sound2_on", 0);
+	WRITE_SIGNAL("dev.485.rsrs2.state_sound2_led", 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -513,17 +510,16 @@ void Work_Norm(){
 	printf("Working in normal mode\n");
 	while(g_mode == MODE_NORM) {
 		if(buttons[B_SOUND_ALARM] && !alarm_enabled) {
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound1_on", 1);
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound1_led", 1);
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound2_on", 1);
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound2_led", 1);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_on", 1);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_led", 1);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_on", 1);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_led", 1);
 			alarm_enabled = 1;
 		} else if(!buttons[B_SOUND_ALARM] && alarm_enabled) {
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound1_on", 0);
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound1_led", 0);
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound2_on", 0);
-			post_write_command (g_Ctx, 
-			post_write_command (g_Ctx, "dev.485.rsrs2.state_sound2_led", 0);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_on", 0);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_led", 0);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_on", 0);
+			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_led", 0);
 			alarm_enabled = 0;
 		}
 		if(buttons[B_START_ALL]) {
@@ -655,22 +651,6 @@ void Work_Pumping() {
 	Process_Timeout();
 	CHECK_MODE_PUMPING();
 
-	do {
-		exState = Get_Signal_Ex(Get_Signal_Idx("wago.bki_R_k7_M7"));
-		if(exState == RD) pthread_yield();
-		CHECK_MODE_PUMPING();
-	} while((g_mode == MODE_PUMPING) && exState != RD && !RB_EMPTY());
-	do {    
-		exState = Get_Signal_Ex(Get_Signal_Idx("wago.oc_temp.pt100_m7"));
-		if(exState == RD) pthread_yield();
-		CHECK_MODE_PUMPING();
-	} while((g_mode == MODE_PUMPING) && exState == RD && !RB_EMPTY());
-	do {
-		exState = Get_Signal_Ex(Get_Signal_Idx("wago.oc_mdi1.oc_w_qf1"));
-		if(exState == RD) pthread_yield();
-		CHECK_MODE_PUMPING();
-	} while((g_mode == MODE_PUMPING) && exState == RD && !RB_EMPTY());
-
 	int tMotor = Get_Signal("wago.oc_temp.pt100_m7");
 	int bki = Get_Signal("wago.bki_k7.M7");
 
@@ -680,7 +660,7 @@ void Work_Pumping() {
 		return;
 	}
 	printf("Waiting feedback for 3 sec\n");
-	post_write_command(g_Ctx,"wago.oc_mdo1.ka6_1", 1);
+	WRITE_SIGNAL("wago.oc_mdo1.ka6_1", 1);
 	RB_FLUSH();
 
 	int oc = Wait_For_Feedback("wago.oc_mdi1.oc_w_k6", 1, 3, &g_mode);
@@ -709,9 +689,9 @@ void Work_Pumping() {
 		WRITE_SIGNAL("wago.oc_mdo1.ka6_1", 0);
 	} while(!Wait_For_Feedback("wago.oc_mdi1.oc_w_k6", 0, 3, &forever));
 	printf("Dimming the button contrast\n");
-	post_write_command(g_Ctx,"dev.485.kb.kbl.led_contrast", 1);
+	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 1);
 	printf("Dimming the start oil pump button\n");
-	post_write_command(g_Ctx, "dev.485.kb.kbl.start_oil_pump", 0);
+	WRITE_SIGNAL( "dev.485.kb.kbl.start_oil_pump", 0);
 }
 
 void *Worker(void* arg) {
@@ -747,5 +727,5 @@ void Init_Worker() {
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
 	pthread_mutex_init(&g_waitMutex, &attr);
-	pthread_create(&g_worker, NULL, &Worker, NULL);
+	//pthread_create(&g_worker, NULL, &Worker, NULL);
 }

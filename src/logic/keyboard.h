@@ -1,12 +1,12 @@
 #pragma once
 
-#include <client/ringbuffer.h>
+#include <common/ringbuffer.h>
 
 #define RB_FLUSH() do { post_process(g_Ctx); while(ring_buffer_size(g_Ctx->command_buffer) > 0) pthread_yield(); } while(0);
 
 struct execution_context_s *g_Ctx;
 
-#define WRITE_SIGNAL(signal, value)	post_write_command(g_Ctx,signal, value);
+#define WRITE_SIGNAL(signal, value) do { 	post_write_command(g_Ctx,signal, value); post_process(g_Ctx); } while (0);
 #define READ_SIGNAL(signal)		post_read_command(g_Ctx,signal);
 #define CHECK(what) 	if(!inProgress[what]) return;
 

@@ -54,7 +54,8 @@ int main(int argc, char **argv) {
   }
 
   addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  addr.sin_addr.s_addr = inet_addr(argv[1]);
+  //addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   addr.sin_port = htons(PORT);
 
   printf("Connecting to the server\n");
@@ -117,12 +118,12 @@ int main(int argc, char **argv) {
         }
 
         switch(GETCMD(command.ce_command->c_cmd)) {
-          case CONST_WRITE:
-            process_command_write(context.signals, context.hash, &command, &context);
-            break;
-          case CONST_UPDATE:
-            process_command_update(context.signals, context.hash, &command, &context);
-            break;
+				case CONST_WRITE:
+					process_command_write(context.signals, context.hash, &command, &context);
+					break;
+				case CONST_UPDATE:
+					process_command_update(context.signals, context.hash, &command, &context);
+					break;
         }
       } while(n);
 
@@ -139,10 +140,19 @@ int main(int argc, char **argv) {
 
     while(ring_buffer_size(context.command_buffer) > 0) {
       struct rb_command_s *command = ring_buffer_get(context.command_buffer);
-      cmd_add(cmd, sizeof(buffer), &ce, command->c_num_param, command->cs_name);
+
+      if(!cmd_add(cmd, sizeof(buffer), &ce, command->c_num_param, command->cs_name)) {
+				// Buffer overflow
+				send_command(&context.signals, context.hash, cmd, context.socket);
+				cmd = cmd_create_packet(buffer);
+				commands = 0;
+				continue;
+			}
+
       for(i = 0; i < command->c_num_param; i ++) {
         ce.ce_command->c_param[i] = htons(command->c_param[i]);
       }
+
       memcpy(ce.ce_command->c_cmd, command->c_cmd, 3);
       ring_buffer_pop(context.command_buffer);
       free(command);

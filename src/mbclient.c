@@ -77,6 +77,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
 
 		uint16_t registers[1] = { value };
 		int rc = modbus_write_registers(mb_ctx, reg, 1, registers); //write in device by register
+		printf("Write device %d:%d value %d\n", mbid, reg, value);
 
     modbus_flush(mb_ctx);
     modbus_close(mb_ctx);
