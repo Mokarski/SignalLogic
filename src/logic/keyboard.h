@@ -1,25 +1,13 @@
 #pragma once
 
+#include <client/ringbuffer.h>
 
-#define RB_FLUSH() while(!RB_EMPTY()) pthread_yield()
-
-//#define WRITE_SIGNAL(signal, value)	ring_buffer_push(Signal_Mod_Buffer, Get_Signal_Idx(signal), value, WR);
-//#define READ_SIGNAL(signal)	ring_buffer_push(Signal_Mod_Buffer, Get_Signal_Idx(signal), 0, RD);
-
-
+#define RB_FLUSH() do { post_process(g_Ctx); while(ring_buffer_size(g_Ctx->command_buffer) > 0) pthread_yield(); } while(0);
 
 struct execution_context_s *g_Ctx;
 
-/*
-extern int Get_Signal_Ex(int ID);
-extern int Get_Signal_Idx(char *name);
-extern int Set_Signal_Ex_Val(int idx, int Ex, int Val);
-extern int Set_Signal_Ex(int idx, int Ex);
-*/
-
 #define WRITE_SIGNAL(signal, value)	post_write_command(g_Ctx,signal, value);
 #define READ_SIGNAL(signal)		post_read_command(g_Ctx,signal);
-
 #define CHECK(what) 	if(!inProgress[what]) return;
 
 int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what);
