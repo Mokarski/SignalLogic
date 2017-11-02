@@ -12,7 +12,7 @@ make upload // for upload to arm
 Structure of project:
 common // library for server and client using
 client // client side
-server //server side
+server // server side
 
 *client.c // template for client creation
 
