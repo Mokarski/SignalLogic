@@ -87,9 +87,9 @@ int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what) {
 	return oc == expect;
 }
 
-int Get_Signal(char *name) {
 
-	return signal_get(g_Ctx,name);
+int Get_Signal(char *name) {
+	return signal_get(g_Ctx, name);
 }
 
 void Worker_Set_Mode(int mode) {
@@ -207,11 +207,8 @@ int Radio_Conv_Joy_Anim() {
 
 int Process_Pu_Conv() {
 	if(Get_Signal("dev.485.kb.kei1.post_conveyor")) {
-		buttons[B_SOUND_ALARM]			= Get_Signal("dev.485.kb.pukonv485c.beep");
 		joystick[J_CONVEYOR] = (Get_Signal("dev.485.kb.pukonv485c.joy_left_conv") << J_BIT_LEFT) | (Get_Signal("dev.485.kb.pukonv485c.joy_down_conv") << J_BIT_DOWN) |
 													(Get_Signal("dev.485.kb.pukonv485c.joy_up_conv") << J_BIT_UP) | (Get_Signal("dev.485.kb.pukonv485c.joy_right_conv") << J_BIT_RIGHT);
-
-//  Pukonv_Conv_Joy_Animation ();
 		return 1;
 	}
 
@@ -245,6 +242,8 @@ void Process_Local_Kb() {
 	joystick[J_RESERVE] = (Get_Signal("dev.485.kb.kei1.reserve_down") << J_BIT_DOWN) | (Get_Signal("dev.485.kb.kei1.reserve_up") << J_BIT_UP);
 	joystick[J_SUPPORT] = (Get_Signal("dev.485.kb.kei1.combain_support_down") << J_BIT_DOWN) | (Get_Signal("dev.485.kb.kei1.combain_support_up") << J_BIT_UP);
 	joystick[J_SOURCER] = (Get_Signal("dev.485.kb.kei1.sourcer_down") << J_BIT_DOWN) | (Get_Signal("dev.485.kb.kei1.sourcer_up") << J_BIT_UP);
+
+	printf("buttons[14]=%d; Signal: %d\n", buttons[14], Get_Signal("dev.485.kb.kei1.sound_alarm"));
 }
 
 void Process_Cable_Kb() {
@@ -413,21 +412,13 @@ void Process_Timeout() {
 #define RIGHT_TRACK_FW	2
 #define RIGHT_TRACK_BW	3
 #define	ASSOCIATE_CONTROL(what, value, signal, panel_signal)	\
-if(joystick[what] & value) { \
-		if(!(controls[what] & value)) { \
-			controls[what] |= value; \
-			WRITE_SIGNAL(signal, 1); \
-			if(panel_signal) WRITE_SIGNAL(panel_signal, 1); \
-		} \
-} else { \
-		if(controls[what] & value) { \
-			controls[what] &= ~value; \
-			WRITE_SIGNAL(signal, 0); \
-			if(panel_signal) WRITE_SIGNAL(panel_signal, 0); \
-		} \
+if((joystick[what] & (value)) != (controls[what] & (value))) { \
+		controls[what] = controls[what] & ~(value) | (joystick[what] & value); \
+		WRITE_SIGNAL(signal, (joystick[what] & value) != 0); \
+		if(panel_signal) WRITE_SIGNAL(panel_signal, (joystick[what] & value) != 0); \
 }
 #define	DISABLE(what, value, signal, panel_signal)	\
-		if(controls[what] & value) { \
+		if(controls[what] & (value)) { \
 			controls[what] &= ~value; \
 			WRITE_SIGNAL(signal, 0); \
 			if(panel_signal) WRITE_SIGNAL(panel_signal, 0); \
@@ -477,51 +468,53 @@ void Process_Joysticks() {
 			clock_gettime(CLOCK_REALTIME, &last_moving);
 		}
 	} else {
-		DISABLE(J_LEFT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on10", NULL);
-		DISABLE(J_LEFT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on11", NULL);
-		DISABLE(J_RIGHT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on0", NULL);
-		DISABLE(J_RIGHT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on1", NULL);
+		DISABLE(J_LEFT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on10", "panel10.kb.kei2.left_truck_forward");
+		DISABLE(J_LEFT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on11", "panel10.kb.kei2.left_truck_back");
+		DISABLE(J_RIGHT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on0", "panel10.kb.kei2.right_truck_forward");
+		DISABLE(J_RIGHT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on1", "panel10.kb.kei2.right_truck_back");
 
-		DISABLE(J_ORGAN, JOYVAL_UP, "dev.485.rsrs.rm_u1_on6", NULL);
-		DISABLE(J_ORGAN, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on7", NULL);
-		DISABLE(J_ORGAN, JOYVAL_LEFT, "dev.485.rsrs.rm_u1_on3", NULL);
-		DISABLE(J_ORGAN, JOYVAL_RIGHT, "dev.485.rsrs.rm_u1_on2", NULL);
+		DISABLE(J_ORGAN, JOYVAL_UP, "dev.485.rsrs.rm_u1_on6", "panel10.kb.kei3.exec_dev_up");
+		DISABLE(J_ORGAN, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on7", "panel10.kb.kei2.exec_dev_down");
+		DISABLE(J_ORGAN, JOYVAL_LEFT, "dev.485.rsrs.rm_u1_on3", "panel10.kb.kei2.exec_dev_left");
+		DISABLE(J_ORGAN, JOYVAL_RIGHT, "dev.485.rsrs.rm_u1_on2", "panel10.kb.kei2.exec_dev_right");
 
 		DISABLE(J_ACCEL, JOYVAL_UP, "dev.485.rsrs.rm_u1_on0", NULL);
 
-		DISABLE(J_TELESCOPE, JOYVAL_UP, "dev.485.rsrs.rm_u1_on4", NULL);
-		DISABLE(J_TELESCOPE, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on5", NULL);
+		DISABLE(J_TELESCOPE, JOYVAL_UP, "dev.485.rsrs.rm_u1_on4", "panel10.kb.kei2.telescope_up");
+		DISABLE(J_TELESCOPE, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on5", "panel10.kb.kei3.telescope_down");
 
-		DISABLE(J_SUPPORT, JOYVAL_UP, "dev.485.rsrs.rm_u2_on8", NULL);
-		DISABLE(J_SUPPORT, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on9", NULL);
+		DISABLE(J_SUPPORT, JOYVAL_UP, "dev.485.rsrs.rm_u2_on8", "panel10.kb.kei2.combain_support_up");
+		DISABLE(J_SUPPORT, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on9", "panel10.kb.kei1.combain_support_down");
 
-		DISABLE(J_SOURCER, JOYVAL_UP, "dev.485.rsrs.rm_u1_on8", NULL);
-		DISABLE(J_SOURCER, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on9", NULL);
+		DISABLE(J_SOURCER, JOYVAL_UP, "dev.485.rsrs.rm_u1_on8", "panel10.kb.kei1.sourcer_up");
+		DISABLE(J_SOURCER, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on9", "panel10.kb.kei1.sourcer_down");
 
-		DISABLE(J_CONVEYOR, JOYVAL_UP, "dev.485.rsrs.rm_u2_on2", NULL);
-		DISABLE(J_CONVEYOR, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on3", NULL);
-		DISABLE(J_CONVEYOR, JOYVAL_LEFT, "dev.485.rsrs.rm_u2_on5", NULL);
-		DISABLE(J_CONVEYOR, JOYVAL_RIGHT, "dev.485.rsrs.rm_u2_on4", NULL);
+		DISABLE(J_CONVEYOR, JOYVAL_UP, "dev.485.rsrs.rm_u2_on2", "panel10.kb.kei1.conveyor_up");
+		DISABLE(J_CONVEYOR, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on3", "panel10.kb.kei1.conveyor_down");
+		DISABLE(J_CONVEYOR, JOYVAL_LEFT, "dev.485.rsrs.rm_u2_on5", "panel10.kb.kei1.conveyor_left");
+		DISABLE(J_CONVEYOR, JOYVAL_RIGHT, "dev.485.rsrs.rm_u2_on4", "panel10.kb.kei1.conveyor_right");
 	}
+	post_process(g_Ctx);
 }
 
 void Work_Norm(){
 	int alarm_enabled = 0;
 	printf("Working in normal mode\n");
 	while(g_mode == MODE_NORM) {
-		if(buttons[B_SOUND_ALARM] && !alarm_enabled) {
-			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_on", 1);
-			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_led", 1);
-			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_on", 1);
-			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_led", 1);
-			alarm_enabled = 1;
-		} else if(!buttons[B_SOUND_ALARM] && alarm_enabled) {
+		if(buttons[B_SOUND_ALARM]) {
+			if(!alarm_enabled) {
+				WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_on", 1);
+				WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_led", 1);
+				WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_on", 1);
+				WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_led", 1);
+			}
+		} else if(alarm_enabled) {
 			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_on", 0);
 			WRITE_SIGNAL( "dev.485.rsrs2.state_sound1_led", 0);
 			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_on", 0);
 			WRITE_SIGNAL( "dev.485.rsrs2.state_sound2_led", 0);
-			alarm_enabled = 0;
 		}
+		alarm_enabled = buttons[B_SOUND_ALARM];
 		if(buttons[B_START_ALL]) {
 			int stop = 0;
 			int step = 0;
@@ -537,7 +530,8 @@ void Work_Norm(){
 					start_Conveyor();
 					break;
 				case 3:
-					start_Stars();
+					printf("Starting stars\n");
+					start_Stars(0);
 					usleep(50000);
 					break;
 				case 4:
@@ -608,6 +602,7 @@ void Work_Norm(){
 			buttons[B_STARS_START] = 0;
 			buttons[B_STARS_REVERSE] = 0;
 		} else if(buttons[B_STARS_START]) {
+			printf("Starting stars\n");
 			start_Stars(0);
 			buttons[B_STARS_START] = 0;
 			buttons[B_STARS_REVERSE] = 0;
@@ -618,6 +613,7 @@ void Work_Norm(){
 		}
 		Process_Joysticks();
 		control_all();
+		post_process(g_Ctx);
 		usleep(10000);
 	}
 
@@ -651,8 +647,8 @@ void Work_Pumping() {
 	Process_Timeout();
 	CHECK_MODE_PUMPING();
 
-	int tMotor = Get_Signal("wago.oc_temp.pt100_m7");
-	int bki = Get_Signal("wago.bki_k7.M7");
+	int tMotor = Get_Signal("dev.wago.oc_temp.pt100_m7");
+	int bki = Get_Signal("dev.wago.bki_k7.M7");
 
 	if(bki != 0) { // || tMotor >= 70) {
 		printf("tMotor: %d; bki: %d\n", tMotor, bki);
@@ -660,14 +656,14 @@ void Work_Pumping() {
 		return;
 	}
 	printf("Waiting feedback for 3 sec\n");
-	WRITE_SIGNAL("wago.oc_mdo1.ka6_1", 1);
+	WRITE_SIGNAL("dev.wago.oc_mdo1.ka6_1", 1);
 	RB_FLUSH();
 
-	int oc = Wait_For_Feedback("wago.oc_mdi1.oc_w_k6", 1, 3, &g_mode);
+	int oc = Wait_For_Feedback("dev.wago.oc_mdi1.oc_w_k6", 1, 3, &g_mode);
 	if(!oc) {
 		printf("No Feedback!\n");
-		printf("Feedback signal: %d\n", Get_Signal("wago.oc_mdi1.oc_w_k6"));
-		printf("Feedback register: %d\n", Get_Signal("wago.oc_mdi1.oc"));
+		printf("Feedback signal: %d\n", Get_Signal("dev.wago.oc_mdi1.oc_w_k6"));
+		printf("Feedback register: %d\n", Get_Signal("dev.wago.oc_mdi1.oc"));
 		Worker_Set_Mode(MODE_IDLE);
 	}
 
@@ -676,9 +672,9 @@ void Work_Pumping() {
 
 	printf("Pumping started\n");
 	while(g_mode == MODE_PUMPING) {
-		int m7a = Get_Signal("wago.oc_mui8.current_m7a");
-		int m7b = Get_Signal("wago.oc_mui8.current_m7b");
-		int m7c = Get_Signal("wago.oc_mui8.current_m7c");
+		int m7a = Get_Signal("dev.wago.oc_mui8.current_m7a");
+		int m7b = Get_Signal("dev.wago.oc_mui8.current_m7b");
+		int m7c = Get_Signal("dev.wago.oc_mui8.current_m7c");
 		usleep(10000);
 		// Check currents
 	}
@@ -686,8 +682,8 @@ void Work_Pumping() {
 	printf("Pumping stopped\n");
 	do {
 		printf("Turning off wago\n");
-		WRITE_SIGNAL("wago.oc_mdo1.ka6_1", 0);
-	} while(!Wait_For_Feedback("wago.oc_mdi1.oc_w_k6", 0, 3, &forever));
+		WRITE_SIGNAL("dev.wago.oc_mdo1.ka6_1", 0);
+	} while(!Wait_For_Feedback("dev.wago.oc_mdi1.oc_w_k6", 0, 3, &forever));
 	printf("Dimming the button contrast\n");
 	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 1);
 	printf("Dimming the start oil pump button\n");
@@ -698,6 +694,7 @@ void *Worker(void* arg) {
 #define MODE_CHANGED (oldMode != g_mode)
 #define CHECK_MODE()	if(MODE_CHANGED) {  }
 	int oldMode = g_mode;
+	printf("Entering mode processor\n");
 	while(1) {
 		if(!g_mode) {
 			oldMode = 0;

@@ -111,8 +111,8 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
     struct mb_reg_write_request_s *wr = req;
     struct mb_device_reg_s *reg = wr->reg;
     req = req->next;
-    regmask = wr->reg->write_mask | wr->write_mask;
-    regvalue = (wr->reg->write_value & ~(wr->write_mask)) | (wr->write_value & wr->write_mask);
+    regmask = reg->write_mask | wr->write_mask;
+    regvalue = (reg->write_value & ~(wr->write_mask)) | (wr->write_value & wr->write_mask);
 
     if(!wr->reg->write_mask) {
       wr->next = reglist;
@@ -130,8 +130,8 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
     struct mb_reg_write_request_s *wr = reglist;
     reglist = reglist->next;
     int regvalue = wr->reg->value;
-    regvalue = regvalue & ~(wr->write_mask);
-    regvalue = regvalue | (wr->write_value);
+    regvalue = regvalue & ~(wr->reg->write_mask);
+    regvalue = regvalue | (wr->reg->write_value & wr->reg->write_mask);
     dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue);
     wr->reg->write_value = 0;
     wr->reg->write_mask  = 0;
@@ -169,19 +169,19 @@ int mb_dev_check_signal(struct mb_device_list_s *dlist, struct signal_s *signal)
   switch(signal->s_register.dr_type) {
   case 'i':
     if(reg->value != signal->s_value) {
-      result = 1;
       signal->s_value = reg->value;
+			return 1;
     }
     break;
   case 'b':
-    value = (reg->value & (1 << signal->s_register.dr_bit)) >> signal->s_register.dr_bit;
+    value = (reg->value & (1 << signal->s_register.dr_bit)) ? 1 : 0;
     signal->s_value = signal->s_value ? 1 : 0;
     if(value != signal->s_value) {
-      result = 1;
       signal->s_value = value;
+      return 1;
     }
     break;
   }
 
-  return result;
+  return 0;
 }

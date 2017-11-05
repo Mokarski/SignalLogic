@@ -65,9 +65,7 @@ int main(int argc, char **argv) {
   }
 
   struct signal_s *signal = 0;
-  struct cmd_entry_s command;
   char   buffer[8192], response_buffer[8192];
-  struct response_packet_header_s *response = (struct response_packet_header_s *)response_buffer;
   struct execution_context_s context;
   fd_set socks;
 
@@ -100,38 +98,12 @@ int main(int argc, char **argv) {
     }
 
     if(FD_ISSET(context.socket, &socks)) {
-      int bytes = packet_read(client, buffer, sizeof(buffer));
+      int bytes = packet_receive_command(context.socket, &context, &process_command);
 
       if(bytes <= 0) {
         perror("Socket read error");
         abort();
       }
-
-      int n = 0;
-
-      do {
-        cmd_next(&command, &n, buffer, bytes);
-
-        if(!command.ce_command || !command.ce_signal) {
-          response->rph_status = STATUS_ERR;
-          break;
-        }
-
-        switch(GETCMD(command.ce_command->c_cmd)) {
-				case CONST_WRITE:
-					process_command_write(context.signals, context.hash, &command, &context);
-					break;
-				case CONST_UPDATE:
-					process_command_update(context.signals, context.hash, &command, &context);
-					break;
-        }
-      } while(n);
-
-      struct response_packet_header_s *packet = (struct response_packet_header_s *)&buffer;
-      packet->rph_num_signals = 0;
-      packet->rph_status = STATUS_OK;
-      packet->rph_size = htons(sizeof(struct response_packet_header_s));
-      send(client, packet, sizeof(struct response_packet_header_s), 0);
     }
 
     struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
@@ -141,9 +113,13 @@ int main(int argc, char **argv) {
     while(ring_buffer_size(context.command_buffer) > 0) {
       struct rb_command_s *command = ring_buffer_get(context.command_buffer);
 
+			// Buffer overflow
       if(!cmd_add(cmd, sizeof(buffer), &ce, command->c_num_param, command->cs_name)) {
-				// Buffer overflow
-				send_command(&context.signals, context.hash, cmd, context.socket);
+        int bytes = packet_send_command(cmd, context.socket, &context, &process_command, &parse_response);
+        if(bytes <= 0) {
+          perror("Socket read error");
+          abort();
+        }
 				cmd = cmd_create_packet(buffer);
 				commands = 0;
 				continue;
@@ -160,7 +136,11 @@ int main(int argc, char **argv) {
     }
 
     if(commands) {
-      send_command(&context.signals, context.hash, cmd, context.socket);
+      int bytes = packet_send_command(cmd, context.socket, &context, &process_command, &parse_response);
+      if(bytes <= 0) {
+        perror("Socket read error");
+        abort();
+      }
     }
   }
 }

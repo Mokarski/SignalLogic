@@ -48,6 +48,7 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
       ctx->device[mbid].reg[i].value = regs[i];
     }
 
+		usleep(1000);
     return 0;
   } else {
     //printf("Read: No modbus device opened\n");
@@ -64,7 +65,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
   void *mb_ctx = ctx->mb_context;
   uint16_t regs[MAX_REG];
 
-  printf("Writing register %d:%d, %x\n", mbid, reg, value);
+  //printf("Writing register %d:%d, %x\n", mbid, reg, value);
   if(mb_ctx != NULL) {
     modbus_set_slave(mb_ctx, mbid);
     int connected = modbus_connect(mb_ctx);
@@ -87,6 +88,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
       return -1;
     }
 
+		usleep(1000);
     return 0;
   } else {
     printf("Write: No modbus device opened\n");
@@ -148,7 +150,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   dlist->mb_context = create_mb_context();
 
   ctx->clientstate = dlist;
-  get_and_subscribe(&ctx->signals, ctx->hash, "dev.485", ctx->socket, SUB_WRITE);
+  get_and_subscribe(ctx, "dev.485", SUB_WRITE);
   s = ctx->signals;
   while(s) {
     mb_dev_add_signal(ctx->clientstate, s);
@@ -160,6 +162,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
 // Polling modbus devices
 void client_thread_proc(struct execution_context_s *ctx) {
   printf("Started modbus proc thread\n");
+	printf("Signals: %p\n", ctx->signals);
   while(ctx->running) {
     struct signal_s *s;
 		int i = 0;
@@ -168,6 +171,7 @@ void client_thread_proc(struct execution_context_s *ctx) {
     while(s) {
 			i ++;
       if(mb_dev_check_signal(ctx->clientstate, s) == 1) {
+				printf("Posting update %s : %d\n", s->s_name, s->s_value);
         post_update_command(ctx, s->s_name, s->s_value);
       }
       s = s->next;

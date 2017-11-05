@@ -17,49 +17,26 @@
 #include "client/signalhelper.h"
 
 void event_update_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	static int oil_pump_started = 0;
 	printf("Updating Name[%s] Val[%d]\n", signal->s_name, signal->s_value);
-	
-	if(!strcmp(signal->s_name, "dev.485.kb.key.start_oil_pump")) {
-		if(!oil_pump_started) {
-			post_write_command(ctx, "dev.485.kb.kbl.start_oil_pump", 1);
-			post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
-			post_process(ctx);
-		}
-	}
-	if(!strcmp(signal->s_name, "dev.485.kb.key.stop_oil_pump")) {
-		if(!oil_pump_started) {
-			post_write_command(ctx, "dev.485.kb.kbl.start_oil_pump", 0);
-			post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 0);
-			post_process(ctx);
-		}
-	}
 }
 
 void event_write_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-//  printf("*** EVENT HANDLER: Writing value %d to signal %s\n", value, signal->s_name);
-//  post_update_command(ctx, "dev.485.rsrs2.sound2_ledms", value);
 }
 
 void client_init(struct execution_context_s *ctx, int argc, char **argv) {
-  printf("Initializing virtual client\n");
-	if (argc == 1){
-		 printf("Usage: virtualclient.exe signal_name \n");
-	 	 printf("Use:  signal_name [dev.] \n");
-	 	   get_signals(&ctx->signals, ctx->hash, "dev", ctx->socket);
-                   subscribe(&ctx->signals, ctx->hash, "dev", ctx->socket, SUB_UPDATE);
-	 } else {
-		  get_signals(&ctx->signals, ctx->hash, argv[1], ctx->socket);
-		  subscribe(&ctx->signals, ctx->hash, argv[1], ctx->socket, SUB_UPDATE);
-                }
-  ctx->clientstate = NULL;
-  printf("Client initialized\n");
+	printf("Initializing virtual client\n");
+	get_and_subscribe(ctx, "dev.panel10.system_water_flow", SUB_UPDATE);
+	ctx->clientstate = NULL;
+	printf("Client initialized\n");
 }
 
 void client_thread_proc(struct execution_context_s *ctx) {
   printf("Started proc thread\n");
+	int val = 0;
   while(ctx->running) {
+		post_update_command(ctx, "dev.panel10.system_water_flow", ++val);
+		printf("Updating signal to value %d\n", val);
     post_process(ctx);
-    usleep(50000);
+    sleep(1);
   }
 }

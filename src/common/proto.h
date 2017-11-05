@@ -25,6 +25,17 @@
 #define CMD_SUB     "SUB"
 #define CMD_UNSUB   "BUS"
 
+#define PH_COMMAND		1
+#define PH_RESPONSE		2
+
+struct packet_header_s {
+	uint16_t ph_size;
+	uint16_t ph_type;
+	char 		 ph_data[0];
+}__attribute__((__packed__));
+
+// ************* Command ******************
+
 struct cmd_s {
   char c_cmd[3];
   uint16_t c_num_param;
@@ -42,7 +53,8 @@ struct cmd_entry_s {
 };
 
 struct cmd_packet_header_s {
-  uint16_t cph_size;
+	uint16_t cph_size;
+	uint16_t cph_type;
   uint16_t cph_num_cmd;
   char cph_command[0];
 }__attribute__((__packed__));
@@ -65,15 +77,20 @@ struct response_entry_s {
 };
 
 struct response_packet_header_s {
-  uint16_t rph_size;
+	uint16_t rph_size;
+	uint16_t rph_type;
   uint16_t rph_status;
   uint16_t rph_num_signals;
   char rph_signals[0];
 }__attribute__((__packed__));
 
+typedef void (*process_command_callback_t)(int sock, struct cmd_packet_header_s *, void *);
+typedef void (*process_response_callback_t)(int sock, struct response_packet_header_s *, void *);
+
 int cmd_next(struct cmd_entry_s *command, int *n, char *buffer, int bufferSize);
 int response_next(struct response_entry_s *command, int *n, char *buffer, int bufferSize);
 
+struct response_packet_header_s *response_create_packet(char *buffer);
 struct cmd_packet_header_s *cmd_create_packet(char *buffer);
 int cmd_create_command(struct cmd_packet_header_s *, int bufsize, char *signal, char *cmd, int nparam, ...);
 
@@ -81,5 +98,7 @@ int cmd_add(struct cmd_packet_header_s *packet, int bufsize, struct cmd_entry_s 
 int response_add(struct response_packet_header_s *packet, int bufsize, struct response_entry_s *response, const char *signal);
 
 int packet_read(int socket, void *buffer, int bufferSize);
+int packet_send_command(struct cmd_packet_header_s *cmd, int socket, void *data, process_command_callback_t cmdcb, process_response_callback_t responsecb);
+int packet_receive_command(int socket, void *data, process_command_callback_t callback);
 
 #endif

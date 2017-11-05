@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <errno.h>
 #include <stdio.h>
 #include "proto.h"
 
@@ -118,11 +119,23 @@ int response_add(struct response_packet_header_s *packet, int bufsize, struct re
   return 1;
 }
 
+struct response_packet_header_s *response_create_packet(char *buffer) {
+  struct response_packet_header_s *r = (struct response_packet_header_s *)buffer;
+  int n = 0;
+
+  r->rph_num_signals = htons(0);
+  r->rph_status = STATUS_OK;
+  r->rph_type = htons(PH_RESPONSE);
+  r->rph_size = htons(sizeof(struct response_packet_header_s));
+  return r;
+}
+
 struct cmd_packet_header_s *cmd_create_packet(char *buffer) {
   struct cmd_packet_header_s *cmd = (struct cmd_packet_header_s *)buffer;
   int n = 0;
 
   cmd->cph_num_cmd = htons(0);
+  cmd->cph_type = htons(PH_COMMAND);
   cmd->cph_size = htons(sizeof(struct cmd_packet_header_s));
   return cmd;
 }
@@ -162,40 +175,86 @@ int cmd_create_command(struct cmd_packet_header_s *pkt, int bufsize, char *signa
   return ncmd;
 }
 
+int packet_receive_command(int socket, void *data, process_command_callback_t callback) {
+  char buffer[20480];
+  struct packet_header_s *hdr = (struct packet_header_s *)buffer;
+  int size;
+  size = packet_read(socket, buffer, sizeof(buffer));
+  if(size <= 0) {
+    return size;
+  }
+  if(ntohs(hdr->ph_type) == PH_COMMAND) {
+    if(callback)
+      callback(socket, (void*)hdr, data);
+  }
+  return size;
+}
+
+int packet_send_command(struct cmd_packet_header_s *cmd, int socket, void *data, process_command_callback_t cmdcb, process_response_callback_t responsecb) {
+  char buffer[20480];
+  struct packet_header_s *hdr = (struct packet_header_s *)buffer;
+  int size;
+  size = ntohs(cmd->cph_size);
+  send(socket, cmd, size, 0);
+  while(1) {
+    size = packet_read(socket, buffer, sizeof(buffer));
+    if(size <= 0) {
+      return size;
+    }
+    switch(ntohs(hdr->ph_type)) {
+    case PH_COMMAND:
+      if(cmdcb)
+        cmdcb(socket, (void*)buffer, data);
+      break;
+    case PH_RESPONSE:
+      if(responsecb)
+        responsecb(socket, (void*)buffer, data);
+      return size;
+    default:
+      /* FIXME: remove obscene language after debug */
+      printf("Pizdets\n");
+    }
+  }
+}
+
 int packet_read(int socket, void *buffer, int bufferSize) {
-  struct cmd_packet_header_s *hdr = (struct cmd_packet_header_s *)buffer;
+  struct packet_header_s *hdr = (struct packet_header_s *)buffer;
   int size, bytes, dataread = 0;
 
-  if(bufferSize < sizeof(struct cmd_packet_header_s)) {
-		printf("Buffer size too small\n");
+  if(bufferSize < sizeof(struct packet_header_s)) {
+    printf("Buffer size too small\n");
     return -1;
   }
 
-  bytes = recv(socket, buffer, sizeof(struct cmd_packet_header_s), 0);
+  bytes = recv(socket, buffer, sizeof(struct packet_header_s), 0);
 
   if(bytes <= 0) {
-		perror("Packet header read error");
+    if(bytes < 0)
+      perror("Packet header read error");
     return bytes;
   }
 
-  size = ntohs(hdr->cph_size);
+  size = ntohs(hdr->ph_size);
 
   if(bufferSize < size) {
-		printf("Packet too big (%d bytes) for the buffer provided (%d bytes)\n", size, bufferSize);
+    printf("Packet too big (%d bytes) for the buffer provided (%d bytes)\n", size, bufferSize);
     return -1;
   }
 
-  size -= sizeof(struct cmd_packet_header_s);
+  size -= sizeof(struct packet_header_s);
 
   while(size > dataread) {
-    bytes = recv(socket, &hdr->cph_command[dataread], size - dataread, 0);
+    bytes = recv(socket, &hdr->ph_data[dataread], size - dataread, 0);
     if(bytes < 0) {
-			perror("Packet read error");
+      if(errno == EAGAIN) {
+        continue;
+      }
+      perror("Packet read error");
       return -1;
     }
     dataread += bytes;
   }
 
-  return size + sizeof(struct cmd_packet_header_s);
+  return size + sizeof(struct packet_header_s);
 }
 

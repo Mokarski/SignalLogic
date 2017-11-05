@@ -15,14 +15,17 @@
 #include "common/subscription.h"
 #include "clientcommand.h"
 
-void parse_response(struct signal_s **signal, struct hash_s *hash, char *buffer, int bufSize) {
+void parse_response(int socket, struct response_packet_header_s *rh, void *ctx) {
+  struct signal_s **signal = &(((struct execution_context_s*)ctx)->signals);
+  struct hash_s *hash = ((struct execution_context_s*)ctx)->hash;
   struct response_entry_s response;
+  int bufSize = ntohs(rh->rph_size);
   char signal_name[256];
   int n = 0;
   struct signal_s *current;
 
   do {
-    if(!response_next(&response, &n, buffer, bufSize)) {
+    if(!response_next(&response, &n, (void*)rh, bufSize)) {
       return;
     }
 
@@ -48,16 +51,7 @@ void parse_response(struct signal_s **signal, struct hash_s *hash, char *buffer,
   } while(n);
 }
 
-void send_command(struct signal_s **signal, struct hash_s *hash, struct cmd_packet_header_s *cmd, int socket) {
-  char buffer[20480];
-  int size;
-  size = ntohs(cmd->cph_size);
-  send(socket, cmd, size, 0);
-  size = packet_read(socket, buffer, sizeof(buffer));
-  parse_response(signal, hash, buffer, size);
-}
-
-void subscribe(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int type) {
+void subscribe(struct execution_context_s *ctx, char *mask, int type) {
   char buffer[1024];
   struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
 
@@ -65,10 +59,13 @@ void subscribe(struct signal_s **signal, struct hash_s *hash, char *mask, int so
     return;
   }
 
-  send_command(signal, hash, cmd, socket);
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
 }
 
-void update_signal(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int value) {
+void update_signal(struct execution_context_s *ctx, char *mask, int value) {
   char buffer[1024];
   struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
 
@@ -76,10 +73,13 @@ void update_signal(struct signal_s **signal, struct hash_s *hash, char *mask, in
     return;
   }
 
-  send_command(signal, hash, cmd, socket);
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
 }
 
-void write_signal(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int value) {
+void write_signal(struct execution_context_s *ctx, char *mask, int value) {
   char buffer[1024];
   struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
 
@@ -87,10 +87,13 @@ void write_signal(struct signal_s **signal, struct hash_s *hash, char *mask, int
     return;
   }
 
-  send_command(signal, hash, cmd, socket);
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
 }
 
-void get_signals(struct signal_s **signal, struct hash_s *hash, char *mask, int socket) {
+void get_signals(struct execution_context_s *ctx, char *mask) {
   char buffer[1024];
   struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
 
@@ -98,10 +101,13 @@ void get_signals(struct signal_s **signal, struct hash_s *hash, char *mask, int 
     return;
   }
 
-  send_command(signal, hash, cmd, socket);
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
 }
 
-void get_and_subscribe(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int type) {
+void get_and_subscribe(struct execution_context_s *ctx, char *mask, int type) {
   char buffer[1024];
   struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
 
@@ -113,7 +119,40 @@ void get_and_subscribe(struct signal_s **signal, struct hash_s *hash, char *mask
     return;
   }
 
-  send_command(signal, hash, cmd, socket);
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
+void process_command(int socket, struct cmd_packet_header_s *hdr, void *ctx) {
+  struct cmd_entry_s command;
+  struct execution_context_s *context = ctx;
+  char   buffer[64];
+	int bytes = ntohs(hdr->cph_size);
+  struct response_packet_header_s *response = (struct response_packet_header_s *)buffer;
+  int n = 0;
+
+  do {
+    cmd_next(&command, &n, (char *)hdr, bytes);
+
+    if(!command.ce_command || !command.ce_signal) {
+      response->rph_status = STATUS_ERR;
+      break;
+    }
+
+    switch(GETCMD(command.ce_command->c_cmd)) {
+    case CONST_WRITE:
+      process_command_write(context->signals, context->hash, &command, context);
+      break;
+    case CONST_UPDATE:
+      process_command_update(context->signals, context->hash, &command, context);
+      break;
+    }
+  } while(n);
+
+  struct response_packet_header_s *packet = response_create_packet(buffer);
+  send(socket, packet, sizeof(struct response_packet_header_s), 0);
 }
 
 void process_command_write(struct signal_s *signal, struct hash_s *hash, struct cmd_entry_s *command, struct execution_context_s *ctx) {

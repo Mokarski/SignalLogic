@@ -13,6 +13,7 @@
 #include "signalrouter.h"
 #include "common/proto.h"
 
-int process_command(struct execution_context_s *context, int socket);
+void process_command(int socket, struct cmd_packet_header_s *hdr, void *context);
+int read_command(struct execution_context_s *context, int socket);
 
 #endif

@@ -126,7 +126,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   dlist->mb_context = create_mb_context();
 
   ctx->clientstate = dlist;
-  get_and_subscribe(&ctx->signals, ctx->hash, "dev.wago", ctx->socket, SUB_WRITE);
+  get_and_subscribe(ctx, "dev.wago", SUB_WRITE);
   s = ctx->signals;
   while(s) {
     mb_dev_add_signal(ctx->clientstate, s);

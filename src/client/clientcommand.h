@@ -14,13 +14,16 @@
 #include "common/signal.h"
 #include "client.h"
 
-void subscribe(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int type);
-void write_signal(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int type);
-void update_signal(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int type);
-void get_signals(struct signal_s **signal, struct hash_s *hash, char *mask, int socket);
-void get_and_subscribe(struct signal_s **signal, struct hash_s *hash, char *mask, int socket, int type);
+void subscribe(struct execution_context_s *ctx, char *mask, int type);
+void write_signal(struct execution_context_s *ctx, char *mask, int type);
+void update_signal(struct execution_context_s *ctx, char *mask, int type);
+void get_signals(struct execution_context_s *ctx, char *mask);
+void get_and_subscribe(struct execution_context_s *ctx, char *mask, int type);
+
 void process_command_write(struct signal_s *signal, struct hash_s *hash, struct cmd_entry_s *command, struct execution_context_s *ctx);
 void process_command_update(struct signal_s *signal, struct hash_s *hash, struct cmd_entry_s *command, struct execution_context_s *ctx);
+void process_command(int socket, struct cmd_packet_header_s *hdr, void *context);
+void parse_response(int socket, struct response_packet_header_s *, void *ctx);
 
 void post_process(struct execution_context_s *ctx);
 void post_read_command(struct execution_context_s *ctx, char *name);

@@ -6,7 +6,7 @@
 
 struct execution_context_s *g_Ctx;
 
-#define WRITE_SIGNAL(signal, value) do { 	post_write_command(g_Ctx,signal, value); post_process(g_Ctx); } while (0);
+#define WRITE_SIGNAL(signal, value) do { post_write_command(g_Ctx, signal, value); printf("Writing value %d to signal %s\n", value, signal); } while(0);
 #define READ_SIGNAL(signal)		post_read_command(g_Ctx,signal);
 #define CHECK(what) 	if(!inProgress[what]) return;
 

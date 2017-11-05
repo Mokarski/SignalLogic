@@ -10,17 +10,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include "common/proto.h"
+#include "servercommand.h"
 #include "serverevents.h"
-
-void send_command(char *packet, int socket) {
-  char buffer[20480];
-  struct cmd_packet_header_s *cmd = (struct cmd_packet_header_s *)packet;
-  int size;
-  size = ntohs(cmd->cph_size);
-  send(socket, packet, size, 0);
-  size = packet_read(socket, buffer, sizeof(buffer));
-  // drop response
-}
 
 int process_events(struct execution_context_s *ctx) {
   struct event_s *event = ctx->events;
@@ -67,7 +58,7 @@ int process_events(struct execution_context_s *ctx) {
 
   for(i = 0; i < MAX_CONN; i ++) {
     if(buffer[i]) {
-      send_command(buffer[i], ctx->sockets[i]);
+      packet_send_command((void*)buffer[i], ctx->sockets[i], ctx, &process_command, NULL);
       free(buffer[i]);
     }
   }

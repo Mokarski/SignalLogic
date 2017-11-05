@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
 #include "common/hash.h"
 #include "servercommand.h"
@@ -188,38 +189,18 @@ void process_command_unsubscribe(struct execution_context_s *context, struct cmd
   }
 }
 
-int process_command(struct execution_context_s *context, int socket) {
-  char buffer[16384], *readstart = buffer;
-  char response_buffer[20480], *writestart;
-  int  n = 0, bytes, bufsize = 0;
-  int  cmdname = 0, i;
+void process_command(int socket, struct cmd_packet_header_s *hdr, void *context) {
   struct cmd_entry_s command;
-  struct cmd_packet_header_s *hdr = (struct cmd_packet_header_s *)buffer;
-  struct response_packet_header_s *response = (struct response_packet_header_s *)response_buffer;
+  int n = 0;
+  int size = ntohs(hdr->cph_size);
+  struct response_packet_header_s *response;
+  char response_buffer[20480];
   struct response_entry_s entry;
 
-  response->rph_num_signals = htons(0);
-  response->rph_status = STATUS_OK;
-  response->rph_size = htons(sizeof(struct response_packet_header_s));
-
-  bytes = packet_read(socket, buffer, sizeof(buffer));
-
-  if(bytes <= 0) {
-    printf("Socket %d (client #%d): cleaning up client subscriptions\n", socket, context->current_client);
-    for(i = 0; i < SUB_MAX; i ++) {
-      struct subscription_s *s = context->subscriptions[context->current_client].sl_subscriptions[i];
-      while(s) {
-        hash_remove_one(context->subscription_by_signal, s->s_signal->s_name, s);
-        s = s->s_next;
-      }
-    }
-
-    subscription_list_clear(&context->subscriptions[context->current_client]);
-    return 0;
-  }
+  response = response_create_packet(response_buffer);
 
   do {
-    cmd_next(&command, &n, buffer, bufsize);
+    cmd_next(&command, &n, (void*)hdr, size);
 
     if(!command.ce_command || !command.ce_signal) {
       response->rph_status = STATUS_ERR;
@@ -242,11 +223,34 @@ int process_command(struct execution_context_s *context, int socket) {
     case CONST_UNSUB:
       process_command_unsubscribe(context, &command, response, &entry, sizeof(response_buffer));
       break;
+    default:
+      response->rph_status = STATUS_ERR;
+      break;
     }
   } while(n);
 
-  int size = ntohs(response->rph_size);
-  write(socket, response_buffer, size);
+  size = ntohs(response->rph_size);
+  send(socket, response_buffer, size, 0);
+}
+
+int read_command(struct execution_context_s *context, int socket) {
+  int  bytes;
+  int  cmdname = 0, i;
+
+  bytes = packet_receive_command(socket, context, &process_command);
+
+  if(bytes <= 0) {
+    for(i = 0; i < SUB_MAX; i ++) {
+      struct subscription_s *s = context->subscriptions[context->current_client].sl_subscriptions[i];
+      while(s) {
+        hash_remove_one(context->subscription_by_signal, s->s_signal->s_name, s);
+        s = s->s_next;
+      }
+    }
+
+    subscription_list_clear(&context->subscriptions[context->current_client]);
+    return 0;
+  }
 
   return 1;
 }
