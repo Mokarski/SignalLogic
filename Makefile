@@ -26,7 +26,7 @@ client_modbus: $(COMMON) src/client/client.c src/client/clientcommand.c src/mbcl
 client_wago: $(COMMON) src/client/client.c src/client/clientcommand.c src/wagoclient.c src/mbdev.c src/common/ringbuffer.c src/client/signalhelper.c
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ $(LDFLAGS_ARM)
 
-client_logic: $(COMMON) src/client/client.c src/client/clientcommand.c src/logicclient.c src/common/ringbuffer.c src/client/signalhelper.c src/logic/keyboard.c src/logic/process.c src/logic/logic_client.c
+client_logic: $(COMMON) src/client/client.c src/client/clientcommand.c src/logicclient.c src/common/ringbuffer.c  src/common/journal.c  src/client/signalhelper.c src/logic/keyboard.c src/logic/process.c src/logic/logic_client.c
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ -lrt -lpthread
 	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 

@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include "process.h"
 #include "keyboard.h"
+#include "../common/journal.h"
 
 #define Devices 40
 #define SignalsPerDev 100
@@ -70,11 +71,13 @@ int Init (){
 	Voltage_Show();
   if(!Get_Signal("dev.wago.oc_ready.state")) {
 	  printf("Wago Ready error!\n");
+	  write_journal(ST_WARNING,1001); //write to log system state and error kode wago
 		return 0;
 	}
 
 	if(Get_Signal("dev.wago.oc_mdi.err_phase")) {
 		printf("Phase error!\n");
+		write_journal(ST_WARNING,1); //write to log system state and error phase
 		return 0;
 	}
 
@@ -85,6 +88,7 @@ int Init (){
 		 Get_Signal("dev.wago.bki_k7.M7"))
 	{
 		printf("BKI error!\n");
+		write_journal(ST_WARNING,1); //write to log system state and error BKI
 		return 0;
 	}
 
