@@ -6,7 +6,7 @@ LDFLAGS_ARM=-lpthread `pkg-config --libs /home/opc/Kombain/libmodbus-3.0.6/libmo
 CFLAGS+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 CFLAGS_ARM+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 
-PROGRAMS_ARM=signalrouter client_logic client_modbus client_wago
+PROGRAMS_ARM=signalrouter client_logic client_modbus client_wago 
 PROGRAMS=client_virtual $(PROGRAMS_ARM)
 
 .c.o:
@@ -30,7 +30,7 @@ client_logic: $(COMMON) src/client/client.c src/client/clientcommand.c src/logic
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ -lrt -lpthread
 	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-upload: $(PROGRAMS_ARM) signals.cfg
+upload: $(PROGRAMS_ARM) signals.cfg libmodbus.so.5.0.5 start-all 
 	for target in $^; do PROGRAM=$$target $(MAKE) .upload-$$target; done;
 
 .upload-$(PROGRAM): $(PROGRAM)
