@@ -15,10 +15,15 @@
 #include "common/ringbuffer.h"
 #include "logic/keyboard.h"
 #include "client/client.h"
-
+#include "logic/logic_client.h"
+#include "processor.h"
 
 void event_update_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	static int oil_pump_started = 0;
+	if(processor_do(ctx, signal, value)) {
+		printf("Processor: signal %s processed\n", signal->s_name);
+		return;
+	}
 	if(
 		!strncmp(signal->s_name, "dev.485.kb", 10) ||
 		!strncmp(signal->s_name, "dev.485.rpdu", 12) ||
@@ -36,9 +41,6 @@ void event_update_signal(struct signal_s *signal, int value, struct execution_co
 			return;
 		}
 	}
-	
-	//signal->s_value=value; //new value
-	//process_loop();
 }
 
 void event_write_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -49,9 +51,11 @@ void event_write_signal(struct signal_s *signal, int value, struct execution_con
 
 void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   printf("Initializing virtual client\n");
+	struct logic_context_s *context = malloc(sizeof(struct logic_context_s));
 	g_Ctx = ctx;
 	get_and_subscribe(ctx, "dev", SUB_UPDATE);
-  ctx->clientstate = NULL;
+	hash_create(&context->proc_hash);
+  ctx->clientstate = context;
 	Init_Worker();
 	process_loop();
   printf("Client initialized\n");

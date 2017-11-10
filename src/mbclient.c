@@ -48,7 +48,7 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
       ctx->device[mbid].reg[i].value = regs[i];
     }
 
-		usleep(1000);
+		usleep(2000);
     return 0;
   } else {
     //printf("Read: No modbus device opened\n");
@@ -88,7 +88,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
       return -1;
     }
 
-		usleep(1000);
+		usleep(2000);
     return 0;
   } else {
     printf("Write: No modbus device opened\n");
