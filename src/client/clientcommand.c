@@ -51,6 +51,20 @@ void parse_response(int socket, struct response_packet_header_s *rh, void *ctx) 
   } while(n);
 }
 
+void unsubscribe(struct execution_context_s *ctx, char *mask, int type) {
+  char buffer[1024];
+  struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
+
+  if(!cmd_create_command(cmd, sizeof(buffer), mask, CMD_UNSUB, 1, type)) {
+    return;
+  }
+
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
 void subscribe(struct execution_context_s *ctx, char *mask, int type) {
   char buffer[1024];
   struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);

@@ -1,4 +1,6 @@
 #include <client/signalhelper.h>
+#include <common/signal.h>
+#include <client/clientcommand.h>
 #include "joystick.h"
 #include "processor.h"
 
@@ -102,12 +104,67 @@ void process_joystick_register(struct execution_context_s *ctx) {
 #define MOVE_DOWN			0x2
 #define MOVE_LEFT			0x4
 #define MOVE_RIGHT		0x8
+
 void process_joystick_conv(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
 	if(control_mode & LISTEN_CONV) {
-		if(strcmp(signal->s_name, ""))
-		return;
-	} else {
+		if(!strcmp(signal->s_name, "dev.485.kb.pukonv485c.joy_left_conv")) {
+			change_direction = MOVE_LEFT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.kb.pukonv485c.joy_down_conv")) {
+			change_direction = MOVE_DOWN;
+		}
+		if(!strcmp(signal->s_name, "dev.485.kb.pukonv485c.joy_right_conv")) {
+			change_direction = MOVE_RIGHT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.kb.pukonv485c.joy_up_conv")) {
+			change_direction = MOVE_UP;
+		}
+	} else if(control_mode & LISTEN_LOCAL) {
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.conveyor_left")) {
+			change_direction = MOVE_LEFT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.conveyor_down")) {
+			change_direction = MOVE_DOWN;
+		}
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.conveyor_right")) {
+			change_direction = MOVE_RIGHT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.conveyor_up")) {
+			change_direction = MOVE_UP;
+		}
+	} else if(control_mode & LISTEN_RPDU) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_left_conv")) {
+			change_direction = MOVE_LEFT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_down_conv")) {
+			change_direction = MOVE_DOWN;
+		}
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_right_conv")) {
+			change_direction = MOVE_RIGHT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_up_conv")) {
+			change_direction = MOVE_UP;
+		}
+	}
+
+	switch(change_direction) {
+	case MOVE_UP:
+		write_command(ctx, "dev.485.rsrs.rm_u2_on2", value);
+		update_command(ctx, "panel10.kb.kei1.conveyor_up", value);
+		break;
+	case MOVE_DOWN:
+		write_command(ctx, "dev.485.rsrs.rm_u2_on3", value);
+		update_command(ctx, "panel10.kb.kei1.conveyor_down", value);
+		break;
+	case MOVE_LEFT:
+		write_command(ctx, "dev.485.rsrs.rm_u2_on5", value);
+		update_command(ctx, "panel10.kb.kei1.conveyor_left", value);
+		break;
+	case MOVE_RIGHT:
+		write_command(ctx, "dev.485.rsrs.rm_u2_on4", value);
+		update_command(ctx, "panel10.kb.kei1.conveyor_right", value);
+		break;
 	}
 }
 

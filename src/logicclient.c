@@ -16,7 +16,7 @@
 #include "logic/keyboard.h"
 #include "client/client.h"
 #include "logic/logic_client.h"
-#include "processor.h"
+#include "logic/processor.h"
 
 void event_update_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	static int oil_pump_started = 0;
@@ -58,6 +58,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   ctx->clientstate = context;
 	Init_Worker();
 	process_loop();
+	process_joystick_register(ctx);
   printf("Client initialized\n");
 }
 

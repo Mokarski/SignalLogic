@@ -9,6 +9,8 @@ CFLAGS_ARM+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libm
 PROGRAMS_ARM=signalrouter client_logic client_modbus client_wago 
 PROGRAMS=client_virtual $(PROGRAMS_ARM)
 
+LOGIC_SRC=src/logic/keyboard.c src/logic/process.c src/logic/logic_client.c src/logic/joystick.c src/logic/processor.c
+
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $^
 
@@ -26,7 +28,7 @@ client_modbus: $(COMMON) src/client/client.c src/client/clientcommand.c src/mbcl
 client_wago: $(COMMON) src/client/client.c src/client/clientcommand.c src/wagoclient.c src/mbdev.c src/common/ringbuffer.c src/client/signalhelper.c
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ $(LDFLAGS_ARM)
 
-client_logic: $(COMMON) src/client/client.c src/client/clientcommand.c src/logicclient.c src/common/ringbuffer.c  src/common/journal.c  src/client/signalhelper.c src/logic/keyboard.c src/logic/process.c src/logic/logic_client.c
+client_logic: $(COMMON) src/client/client.c src/client/clientcommand.c src/logicclient.c src/common/ringbuffer.c  src/common/journal.c  src/client/signalhelper.c $(LOGIC_SRC)
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ -lrt -lpthread
 	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 

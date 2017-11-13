@@ -45,10 +45,12 @@ struct mb_device_s {
   int    mb_reg_max;
   int    needs_sync;
   struct mb_device_reg_s reg[MAX_REG];
+  int    is_urgent;
 };
 
 // Device list with callbacks for reading and writing registers
 struct mb_device_list_s {
+	int		 process_times;
   void   *mb_context;
   int    (*mb_read_device)(struct mb_device_list_s *ctx, int mb_id, int reg);
   int    (*mb_write_device)(struct mb_device_list_s *ctx, int mb_id, int reg, int value);
@@ -62,7 +64,7 @@ struct mb_device_list_s {
 void mb_dev_list_init(struct mb_device_list_s *dlist);
 
 // Add a signal
-int  mb_dev_add_signal(struct mb_device_list_s *dlist, struct signal_s *signal);
+int  mb_dev_add_signal(struct mb_device_list_s *dlist, struct signal_s *signal, int is_urgent);
 
 // Add a write request
 void mb_dev_add_write_request(struct mb_device_list_s *dlist, struct signal_s *signal, int value);

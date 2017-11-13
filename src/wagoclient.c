@@ -129,7 +129,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   get_and_subscribe(ctx, "dev.wago", SUB_WRITE);
   s = ctx->signals;
   while(s) {
-    mb_dev_add_signal(ctx->clientstate, s);
+    mb_dev_add_signal(ctx->clientstate, s, 1);
 		printf("Signal %s added\n", s->s_name);
     s = s->next;
   }

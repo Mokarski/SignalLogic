@@ -611,7 +611,7 @@ void Work_Norm(){
 			buttons[B_STARS_START] = 0;
 			buttons[B_STARS_REVERSE] = 0;
 		}
-		Process_Joysticks();
+		//Process_Joysticks();
 		control_all();
 		post_process(g_Ctx);
 		usleep(10000);

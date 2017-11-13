@@ -19,7 +19,7 @@ void mb_dev_list_init(struct mb_device_list_s *dlist) {
   pthread_mutex_init(&dlist->mutex, NULL);
 }
 
-int  mb_dev_add_signal(struct mb_device_list_s *dlist, struct signal_s *signal) {
+int  mb_dev_add_signal(struct mb_device_list_s *dlist, struct signal_s *signal, int is_urgent) {
   int mb_id = signal->s_register.dr_device.d_mb_id;
   int addr  = signal->s_register.dr_addr;
 
@@ -46,6 +46,10 @@ int  mb_dev_add_signal(struct mb_device_list_s *dlist, struct signal_s *signal) 
   if(addr + 1 > device->mb_reg_max) {
     device->mb_reg_max = addr + 1;
   }
+
+	if(is_urgent) {
+		device->is_urgent = 1;
+	}
 
   // Attach signal to the register
   signal_entry->signal = signal;
@@ -141,9 +145,12 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
   // Update registers values
   for(i = 0; i < dlist->dev_max + 1; i ++) {
     if(dlist->device[i].mb_reg_max > 0) {
-      dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
+			if(dlist->device[i].is_urgent || (dlist->process_times % 3 == 0))
+				dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
     }
   }
+
+	dlist->process_times ++;
 }
 
 int mb_dev_check_signal(struct mb_device_list_s *dlist, struct signal_s *signal) {

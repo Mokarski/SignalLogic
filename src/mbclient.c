@@ -36,7 +36,8 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
     }
 
     int rc = modbus_read_registers(mb_ctx, 0, max_regs, regs);
-
+     
+		//printf("MB_Read device %d:%d \n", mbid, max_regs);
     modbus_flush(mb_ctx);
     modbus_close(mb_ctx);
 
@@ -48,7 +49,7 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
       ctx->device[mbid].reg[i].value = regs[i];
     }
 
-		usleep(2000);
+		usleep(10000);
     return 0;
   } else {
     //printf("Read: No modbus device opened\n");
@@ -70,7 +71,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
     modbus_set_slave(mb_ctx, mbid);
     int connected = modbus_connect(mb_ctx);
     if(connected < 0) {
-			printf("Writing modbus register failed: couldn't connect\n");
+			printf("MB_Writing modbus register failed: couldn't connect\n");
       modbus_flush(mb_ctx);
       modbus_close(mb_ctx);
       return -1;
@@ -88,7 +89,6 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
       return -1;
     }
 
-		usleep(2000);
     return 0;
   } else {
     printf("Write: No modbus device opened\n");
@@ -118,7 +118,7 @@ void *create_mb_context() {
     perror("Couldn't open RTU modbus\n");
   }
 
-	modbus_set_error_recovery(ctx, 1);
+	modbus_set_error_recovery(ctx, MODBUS_ERROR_RECOVERY_LINK | MODBUS_ERROR_RECOVERY_PROTOCOL);
 	modbus_set_debug(ctx, 0);
 
   struct timeval byte_timeout;
@@ -153,8 +153,9 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   get_and_subscribe(ctx, "dev.485", SUB_WRITE);
   s = ctx->signals;
   while(s) {
-    mb_dev_add_signal(ctx->clientstate, s);
-		printf("Signal %s added\n", s->s_name);
+    mb_dev_add_signal(ctx->clientstate, s, s->s_register.dr_device.d_type == 'u');
+		if(s->s_register.dr_device.d_type == 'u')
+			printf("Signal %s added as urgent\n", s->s_name);
     s = s->next;
   }
 }
@@ -171,7 +172,8 @@ void client_thread_proc(struct execution_context_s *ctx) {
     while(s) {
 			i ++;
       if(mb_dev_check_signal(ctx->clientstate, s) == 1) {
-				printf("Posting update %s : %d\n", s->s_name, s->s_value);
+				if(strstr(s->s_name, "dev.485.kb.kei1.conveyor") != NULL)
+					printf("Posting update %s : %d\n", s->s_name, s->s_value);
         post_update_command(ctx, s->s_name, s->s_value);
       }
       s = s->next;

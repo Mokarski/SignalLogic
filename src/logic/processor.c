@@ -1,3 +1,7 @@
+#include <client/client.h>
+#include <common/hash.h>
+#include <common/signal.h>
+#include "logic_client.h"
 #include "processor.h"
 
 void processor_add(struct execution_context_s *ctx, char *name, signal_processor_t processor)
@@ -10,7 +14,7 @@ int processor_do(struct execution_context_s *ctx, struct signal_s *signal, int v
 {
 	struct logic_context_s *context = ctx->clientstate;
 	signal_processor_t processors[256];
-	int i, num = hash_find_all(context->proc_hash, name, (void**)processors, sizeof(processors)/sizeof(processors[0]));
+	int i, num = hash_find_all(context->proc_hash, signal->s_name, (void**)processors, sizeof(processors)/sizeof(processors[0]));
 	for(i = 0; i < num; i ++) {
 		processors[i](signal, value, ctx);
 	}
