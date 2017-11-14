@@ -151,19 +151,19 @@ void process_joystick_conv(struct signal_s *signal, int value, struct execution_
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on2", value);
-		update_command(ctx, "panel10.kb.kei1.conveyor_up", value);
+		update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on3", value);
-		update_command(ctx, "panel10.kb.kei1.conveyor_down", value);
+		update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", value);
 		break;
 	case MOVE_LEFT:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on5", value);
-		update_command(ctx, "panel10.kb.kei1.conveyor_left", value);
+		update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", value);
 		break;
 	case MOVE_RIGHT:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on4", value);
-		update_command(ctx, "panel10.kb.kei1.conveyor_right", value);
+		update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", value);
 		break;
 	}
 }
@@ -196,24 +196,47 @@ void process_joystick_execdev(struct signal_s *signal, int value, struct executi
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on6", value);
-		update_command(ctx, "panel10.kb.kei3.exec_dev_up", value);
+		update_command(ctx, "dev.panel10.kb.kei3.exec_dev_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on7", value);
-		update_command(ctx, "panel10.kb.kei2.exec_dev_down", value);
+		update_command(ctx, "dev.panel10.kb.kei2.exec_dev_down", value);
 		break;
 	case MOVE_LEFT:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on3", value);
-		update_command(ctx, "panel10.kb.kei2.exec_dev_left", value);
+		update_command(ctx, "dev.panel10.kb.kei2.exec_dev_left", value);
 		break;
 	case MOVE_RIGHT:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on2", value);
-		update_command(ctx, "panel10.kb.kei2.exec_dev_right", value);
+		update_command(ctx, "dev.panel10.kb.kei2.exec_dev_right", value);
 		break;
 	}
 }
 
 void process_joystick_telescope(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	int change_direction = 0;
+	if(control_mode & LISTEN_LOCAL) {
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.telescope_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.telescope_up"))
+			change_direction = MOVE_UP;
+	} else if(control_mode & LISTEN_RPDU) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.telescope_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.telescope_up"))
+			change_direction = MOVE_UP;
+	}
+
+	switch(change_direction) {
+	case MOVE_UP:
+		write_command(ctx, "dev.485.rsrs.rm_u1_on4", value);
+		update_command(ctx, "dev.panel10.kb.kei2.telescope_up", value);
+		break;
+	case MOVE_DOWN:
+		write_command(ctx, "dev.485.rsrs.rm_u1_on5", value);
+		update_command(ctx, "dev.panel10.kb.kei2.telescope_down", value);
+		break;
+	}
 }
 
 void process_joystick_support(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -226,23 +249,47 @@ void process_joystick_support(struct signal_s *signal, int value, struct executi
 	} else if(control_mode & LISTEN_RPDU) {
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.support_down"))
 			change_direction = MOVE_DOWN;
-		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.support_down"))
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.support_up"))
 			change_direction = MOVE_UP;
 	}
 
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on8", value);
-		update_command(ctx, "panel10.kb.kei2.combain_support_up", value);
+		update_command(ctx, "dev.panel10.kb.kei2.combain_support_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on9", value);
-		update_command(ctx, "panel10.kb.kei1.combain_support_down", value);
+		update_command(ctx, "dev.panel10.kb.kei1.combain_support_down", value);
 		break;
 	}
 }
 
 void process_joystick_feeder(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	int change_direction = 0;
+	if(control_mode & LISTEN_LOCAL) {
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.sourcer_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.sourcer_up"))
+			change_direction = MOVE_UP;
+	} else if(control_mode & LISTEN_RPDU) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.sourcer_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.sourcer_up"))
+			change_direction = MOVE_UP;
+	}
+
+	switch(change_direction) {
+	case MOVE_UP:
+		write_command(ctx, "dev.485.rsrs.rm_u1_on8", value);
+		update_command(ctx, "dev.panel10.kb.kei1.sourcer_up", value);
+		break;
+	case MOVE_DOWN:
+		write_command(ctx, "dev.485.rsrs.rm_u1_on9", value);
+		update_command(ctx, "dev.panel10.kb.kei1.sourcer_down", value);
+		break;
+	}
+
 }
 
 void process_mode_switch(struct signal_s *signal, int value, struct execution_context_s *ctx) {
