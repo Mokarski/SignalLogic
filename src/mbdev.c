@@ -84,6 +84,7 @@ void mb_dev_add_write_request(struct mb_device_list_s *dlist, struct signal_s *s
   // Prepare value and mask for the signal
   req->write_mask   = 0xffff;
   req->write_value = value;
+	req->next = NULL;
 
   if(signal->s_register.dr_type == 'b') {
     req->write_mask = 1 << signal->s_register.dr_bit;
@@ -92,12 +93,15 @@ void mb_dev_add_write_request(struct mb_device_list_s *dlist, struct signal_s *s
 
   // Be safe, as we can read out write requests in another thread
   pthread_mutex_lock(&dlist->mutex);
-  req->next     = dlist->writes;
-  dlist->writes = req;
+	if(dlist->writes_head)
+		dlist->writes_head->next = req;
+	dlist->writes_head = req;
+	if(!dlist->writes)
+		dlist->writes = req;
   pthread_mutex_unlock(&dlist->mutex);
 }
 
-int mb_dev_update(struct mb_device_list_s *dlist) {
+static void mb_dev_flush_write(struct mb_device_list_s *dlist) {
   int i = 0, j;
   int regvalue;
   struct mb_reg_write_request_s *req, *reglist = NULL;
@@ -106,6 +110,7 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
   pthread_mutex_lock(&dlist->mutex);
   req = dlist->writes;
   dlist->writes = NULL;
+  dlist->writes_head = NULL;
   pthread_mutex_unlock(&dlist->mutex);
 
   // Read out all write requests, leaving 1 per register, so we could write all signals at once
@@ -136,17 +141,52 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
     int regvalue = wr->reg->value;
     regvalue = regvalue & ~(wr->reg->write_mask);
     regvalue = regvalue | (wr->reg->write_value & wr->reg->write_mask);
-    dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue);
+    if(dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue) < 0)
+			dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue); // Try again
     wr->reg->write_value = 0;
     wr->reg->write_mask  = 0;
     free(wr);
   }
+}
+
+int mb_dev_update(struct mb_device_list_s *dlist) {
+	int i, j;
+	struct mb_signal_list_s *list;
 
   // Update registers values
   for(i = 0; i < dlist->dev_max + 1; i ++) {
+		if(dlist->writes) {
+			mb_dev_flush_write(dlist);
+		}
+
     if(dlist->device[i].mb_reg_max > 0) {
-			if(dlist->device[i].is_urgent || (dlist->process_times % 3 == 0))
-				dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
+			if(dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max) >= 0) {
+				for(j = 0; dlist->mb_signal_updated && (j < dlist->device[i].mb_reg_max); j ++) {
+					int value = 0;
+					list = dlist->device[i].reg[j].signals;
+					while(list) {
+						switch(list->signal->s_register.dr_type) {
+						case 'i':
+							if(dlist->device[i].reg[j].value != list->signal->s_value) {
+								list->signal->s_value = dlist->device[i].reg[j].value;
+								dlist->mb_signal_updated(dlist, list->signal);
+							}
+							break;
+						case 'b':
+							value = (dlist->device[i].reg[j].value & (1 << list->signal->s_register.dr_bit)) ? 1 : 0;
+							list->signal->s_value = list->signal->s_value ? 1 : 0;
+							if(value != list->signal->s_value) {
+								list->signal->s_value = value;
+								dlist->mb_signal_updated(dlist, list->signal);
+							}
+							break;
+						}
+						//if(mb_dev_check_signal(dlist, list->signal)) {
+						//}
+						list = list->next;
+					}
+				}
+			}
     }
   }
 

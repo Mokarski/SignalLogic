@@ -1,8 +1,8 @@
 CC=gcc
 CC_ARM=/opt/freescale/usr/local/gcc-4.4.4-glibc-2.11.1-multilib-1.0/arm-fsl-linux-gnueabi/bin/arm-fsl-linux-gnueabi-gcc
 COMMON=src/common/hash.c src/common/proto.c src/common/signal.c
-LDFLAGS=-lpthread `pkg-config --libs /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc` -lrt
-LDFLAGS_ARM=-lpthread `pkg-config --libs /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc` -lrt
+LDFLAGS+=-lpthread -lmodbus -lrt
+LDFLAGS_ARM+=-lpthread `pkg-config --libs /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc` -lrt
 CFLAGS+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 CFLAGS_ARM+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 
@@ -23,6 +23,7 @@ client_virtual: $(COMMON) src/client/client.c src/client/clientcommand.c src/vir
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client_modbus: $(COMMON) src/client/client.c src/client/clientcommand.c src/mbclient.c src/mbdev.c src/common/ringbuffer.c src/client/signalhelper.c
+	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ $(LDFLAGS_ARM)
 
 client_wago: $(COMMON) src/client/client.c src/client/clientcommand.c src/wagoclient.c src/mbdev.c src/common/ringbuffer.c src/client/signalhelper.c

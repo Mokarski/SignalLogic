@@ -20,9 +20,17 @@
 #include "client/signalhelper.h"
 #include "mbdev.h"
 
+struct modbus_client_s {
+	void *mb_context;
+	struct mb_device_list_s *dev_list;
+	struct execution_context_s *exec_ctx;
+	struct timespec last_write;
+};
+
 int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
 #ifdef MODBUS_ENABLE
-  modbus_t *mb_ctx = ctx->mb_context;
+	struct modbus_client_s *client = (struct modbus_client_s *)((struct execution_context_s*)ctx->mb_context)->clientstate;
+  modbus_t *mb_ctx = client->mb_context;
   uint16_t regs[MAX_REG];
   int i;
 
@@ -49,7 +57,6 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
       ctx->device[mbid].reg[i].value = regs[i];
     }
 
-		usleep(10000);
     return 0;
   } else {
     //printf("Read: No modbus device opened\n");
@@ -63,15 +70,30 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
 
 int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
 #ifdef MODBUS_ENABLE
-  void *mb_ctx = ctx->mb_context;
+	struct modbus_client_s *client = (struct modbus_client_s *)((struct execution_context_s*)ctx->mb_context)->clientstate;
+  modbus_t *mb_ctx = client->mb_context;
   uint16_t regs[MAX_REG];
+	unsigned long long interim;
+	struct timespec now;
 
+	clock_gettime(CLOCK_REALTIME, &now);
+	interim = (now.tv_sec - client->last_write.tv_sec) * 1000;
+	interim += now.tv_nsec / 1000000;
+	interim -= client->last_write.tv_nsec / 1000000;
+
+	printf("Last write was performed %llu msec ago\n", interim);
+
+	if(interim < 15) {
+		usleep((15-interim) * 1000);
+	}
+
+	clock_gettime(CLOCK_REALTIME, &client->last_write);
   //printf("Writing register %d:%d, %x\n", mbid, reg, value);
   if(mb_ctx != NULL) {
     modbus_set_slave(mb_ctx, mbid);
     int connected = modbus_connect(mb_ctx);
     if(connected < 0) {
-			printf("MB_Writing modbus register failed: couldn't connect\n");
+			printf("Writing modbus register failed: couldn't connect\n");
       modbus_flush(mb_ctx);
       modbus_close(mb_ctx);
       return -1;
@@ -89,6 +111,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
       return -1;
     }
 
+		usleep(2000);
     return 0;
   } else {
     printf("Write: No modbus device opened\n");
@@ -107,7 +130,8 @@ void event_update_signal(struct signal_s *signal, int value, struct execution_co
 }
 
 void event_write_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-  mb_dev_add_write_request(ctx->clientstate, signal, value);
+	struct modbus_client_s *client = (struct modbus_client_s *)ctx->clientstate;
+  mb_dev_add_write_request(client->dev_list, signal, value);
 }
 
 void *create_mb_context() {
@@ -126,58 +150,60 @@ void *create_mb_context() {
 
   /* Define a new and too short timeout! */
 	response_timeout.tv_sec = 0;
-	response_timeout.tv_usec = 30000;
+	response_timeout.tv_usec = 15000;
 	modbus_set_response_timeout(ctx, &response_timeout);
 
-  byte_timeout.tv_sec = 0;
-  byte_timeout.tv_usec = 30000;
-  modbus_set_byte_timeout(ctx, &byte_timeout);
+  //byte_timeout.tv_sec = 0;
+  //byte_timeout.tv_usec = 10;
+  //modbus_set_byte_timeout(ctx, &byte_timeout);
 	return ctx;
 #else
   return NULL;
 #endif
 }
 
+int modbus_signal_updated(struct mb_device_list_s *ctx, struct signal_s *signal) {
+	if(strstr(signal->s_name, "dev.485.kb.kei1.conveyor") != NULL)
+		printf("Posting update %s : %d\n", signal->s_name, signal->s_value);
+	post_update_command(ctx->mb_context, signal->s_name, signal->s_value);
+	post_process(ctx->mb_context);
+}
+
 void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   struct signal_s *s;
   struct mb_device_list_s *dlist;
+	struct modbus_client_s *client;
 
   dlist = malloc(sizeof(struct mb_device_list_s));
   mb_dev_list_init(dlist);
 
+  client = malloc(sizeof(struct modbus_client_s));
+  client->mb_context = create_mb_context();
+  client->dev_list = dlist;
+  client->exec_ctx = ctx;
+
   dlist->mb_read_device  = &modbus_read;
   dlist->mb_write_device = &modbus_write;
-  dlist->mb_context = create_mb_context();
+	dlist->mb_signal_updated = &modbus_signal_updated;
+  dlist->mb_context = ctx;
 
-  ctx->clientstate = dlist;
+  ctx->clientstate = client;
   get_and_subscribe(ctx, "dev.485", SUB_WRITE);
   s = ctx->signals;
   while(s) {
-    mb_dev_add_signal(ctx->clientstate, s, s->s_register.dr_device.d_type == 'u');
-		if(s->s_register.dr_device.d_type == 'u')
-			printf("Signal %s added as urgent\n", s->s_name);
+    mb_dev_add_signal(dlist, s, 0);
     s = s->next;
   }
 }
 
 // Polling modbus devices
 void client_thread_proc(struct execution_context_s *ctx) {
+	struct modbus_client_s *client = (struct modbus_client_s *)ctx->clientstate;
   printf("Started modbus proc thread\n");
 	printf("Signals: %p\n", ctx->signals);
+	clock_gettime(CLOCK_REALTIME, &client->last_write);
   while(ctx->running) {
-    struct signal_s *s;
-		int i = 0;
-    mb_dev_update(ctx->clientstate);
-    s = ctx->signals;
-    while(s) {
-			i ++;
-      if(mb_dev_check_signal(ctx->clientstate, s) == 1) {
-				if(strstr(s->s_name, "dev.485.kb.kei1.conveyor") != NULL)
-					printf("Posting update %s : %d\n", s->s_name, s->s_value);
-        post_update_command(ctx, s->s_name, s->s_value);
-      }
-      s = s->next;
-    }
+    mb_dev_update(client->dev_list);
     post_process(ctx);
   }
 }
