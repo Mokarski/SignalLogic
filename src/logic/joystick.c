@@ -1,6 +1,7 @@
 #include <client/signalhelper.h>
 #include <common/signal.h>
 #include <client/clientcommand.h>
+#include <logic/logic_client.h>
 #include "joystick.h"
 #include "processor.h"
 
@@ -27,6 +28,7 @@
 #define MOVE_RIGHT		0x8
 
 static int control_mode = LISTEN_LOCAL;
+static void process_mode_switch(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
 static void process_register_conv(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.pukonv485c.joy_left_conv", &process_joystick_conv);
@@ -37,10 +39,10 @@ static void process_register_conv(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.conveyor_down", &process_joystick_conv);
 	processor_add(ctx, "dev.485.kb.kei1.conveyor_right", &process_joystick_conv);
 	processor_add(ctx, "dev.485.kb.kei1.conveyor_up", &process_joystick_conv);
-	processor_add(ctx, "dev.485.rpdu485.kei.joy_left_conv", &process_joystick_conv);
-	processor_add(ctx, "dev.485.rpdu485.kei.joy_down_conv", &process_joystick_conv);
-	processor_add(ctx, "dev.485.rpdu485.kei.joy_right_conv", &process_joystick_conv);
-	processor_add(ctx, "dev.485.rpdu485.kei.joy_up_conv", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_left", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_down", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_right", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_up", &process_joystick_conv);
 }
 
 static void process_register_move(struct execution_context_s *ctx) {
@@ -107,6 +109,7 @@ void process_joystick_register(struct execution_context_s *ctx) {
 
 void process_joystick_conv(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
+	if(!is_oil_station_started(ctx)) return;
 	if(control_mode & LISTEN_CONV) {
 		if(!strcmp(signal->s_name, "dev.485.kb.pukonv485c.joy_left_conv")) {
 			change_direction = MOVE_LEFT;
@@ -134,16 +137,16 @@ void process_joystick_conv(struct signal_s *signal, int value, struct execution_
 			change_direction = MOVE_UP;
 		}
 	} else if(control_mode & LISTEN_RPDU) {
-		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_left_conv")) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_conv_left")) {
 			change_direction = MOVE_LEFT;
 		}
-		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_down_conv")) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_conv_down")) {
 			change_direction = MOVE_DOWN;
 		}
-		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_right_conv")) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_conv_right")) {
 			change_direction = MOVE_RIGHT;
 		}
-		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_up_conv")) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_conv_up")) {
 			change_direction = MOVE_UP;
 		}
 	}
@@ -168,11 +171,126 @@ void process_joystick_conv(struct signal_s *signal, int value, struct execution_
 	}
 }
 
+void process_joystick_move_change(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	int jleft, jright, jup, jdown;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	struct timespec now;
+	int left_move = 0, right_move = 0;
+#define J_BIT_UP 		0
+#define J_BIT_DOWN  1
+
+	printf("Processing truck joystick(s)\n");
+	if(context->is_moving) {
+		printf("Trucks are moving or starting\n");
+		clock_gettime(CLOCK_REALTIME, &now);
+		if((now.tv_sec - context->last_move.tv_sec > 6) && !context->trucks_started) {
+			printf("Process sirenes\n");
+			process_sirens_timeout(5, &context->is_moving, ctx);
+		}
+
+		if(!context->is_moving) {
+			return;
+		}
+
+		context->trucks_started = 1;
+
+		if(control_mode & LISTEN_LOCAL) {
+			left_move = (signal_get(ctx, "dev.485.kb.kei1.left_truck_back")   << J_BIT_DOWN) | (signal_get(ctx, "dev.485.kb.kei1.left_truck_forward")  << J_BIT_UP);
+			right_move = (signal_get(ctx, "dev.485.kb.kei1.right_truck_back") << J_BIT_DOWN) | (signal_get(ctx, "dev.485.kb.kei1.right_truck_forward") << J_BIT_UP);
+		} else if(control_mode & LISTEN_RPDU) {
+			jleft = signal_get(ctx, "dev.485.rpdu485.kei.joy_forward");
+			jright = signal_get(ctx, "dev.485.rpdu485.kei.joy_back");
+			jup = signal_get(ctx, "dev.485.rpdu485.kei.joy_left");
+			jdown = signal_get(ctx, "dev.485.rpdu485.kei.joy_right");
+
+			if(jup) {
+				left_move = (jright << J_BIT_UP) | (!jleft << J_BIT_UP);
+				right_move = (jleft << J_BIT_UP) | (!jright << J_BIT_UP);
+			} else if(jdown) {
+				left_move = (jright << J_BIT_DOWN) | (!jleft << J_BIT_DOWN);
+				right_move = (jleft << J_BIT_DOWN) | (!jright << J_BIT_DOWN);
+			} else {
+				left_move = jright << J_BIT_UP | jleft << J_BIT_DOWN;
+				right_move = jright << J_BIT_DOWN | jleft << J_BIT_UP;
+			}
+		}
+
+		if(left_move & (1 << J_BIT_UP)) {
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 0);
+			post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 0);
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 1);
+			post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 1);
+		} else if(left_move & (1 << J_BIT_DOWN)) {
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 0);
+			post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 0);
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 1);
+			post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 1);
+		} else {
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 0);
+			post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 0);
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 0);
+			post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 0);
+		}
+		if(right_move & (1 << J_BIT_UP)) {
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 0);
+			post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 0);
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 1);
+			post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 1);
+		} else if(right_move & (1 << J_BIT_DOWN)) {
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 0);
+			post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 0);
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 1);
+			post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 1);
+		} else {
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 0);
+			post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 0);
+			post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 0);
+			post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 0);
+		}
+		if(!left_move && !right_move) {
+			clock_gettime(CLOCK_REALTIME, &context->last_move);
+			context->trucks_started = 0;
+		}
+	} else {
+		printf("Trucks are stopping\n");
+		if(context->trucks_started)
+			clock_gettime(CLOCK_REALTIME, &context->last_move);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 0);
+		post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 0);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 0);
+		post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 0);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 0);
+		post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 0);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 0);
+		post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 0);
+		context->trucks_started = 0;
+	}
+}
+
 void process_joystick_move(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!is_oil_station_started(ctx)) return;
+	signal->s_value = value;
+	int is_moving = 
+		signal_get(ctx, "dev.485.kb.kei1.left_truck_back") || signal_get(ctx, "dev.485.kb.kei1.left_truck_forward") ||
+		signal_get(ctx, "dev.485.kb.kei1.right_truck_back") || signal_get(ctx, "dev.485.kb.kei1.right_truck_forward") ||
+		signal_get(ctx, "dev.485.rpdu485.kei.joy_forward") || signal_get(ctx, "dev.485.rpdu485.kei.joy_back") ||
+		signal_get(ctx, "dev.485.rpdu485.kei.joy_left") || signal_get(ctx, "dev.485.rpdu485.kei.joy_right");
+
+	if(is_moving) {
+		context->is_moving = is_moving;
+	} else {
+		// Update last moving time
+		if(context->is_moving) {
+			context->is_moving = is_moving;
+		}
+	}
+	post_command(&process_joystick_move_change, signal, value, ctx);
 }
 
 void process_joystick_execdev(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
+	if(!is_oil_station_started(ctx)) return;
 	if(control_mode & LISTEN_LOCAL) {
 		if(!strcmp(signal->s_name, "dev.485.kb.kei1.exec_dev_left"))
 			change_direction = MOVE_LEFT;
@@ -215,6 +333,7 @@ void process_joystick_execdev(struct signal_s *signal, int value, struct executi
 
 void process_joystick_telescope(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
+	if(!is_oil_station_started(ctx)) return;
 	if(control_mode & LISTEN_LOCAL) {
 		if(!strcmp(signal->s_name, "dev.485.kb.kei1.telescope_down"))
 			change_direction = MOVE_DOWN;
@@ -241,6 +360,7 @@ void process_joystick_telescope(struct signal_s *signal, int value, struct execu
 
 void process_joystick_support(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
+	if(!is_oil_station_started(ctx)) return;
 	if(control_mode & LISTEN_LOCAL) {
 		if(!strcmp(signal->s_name, "dev.485.kb.kei1.combain_support_down"))
 			change_direction = MOVE_DOWN;
@@ -267,6 +387,7 @@ void process_joystick_support(struct signal_s *signal, int value, struct executi
 
 void process_joystick_feeder(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
+	if(!is_oil_station_started(ctx)) return;
 	if(control_mode & LISTEN_LOCAL) {
 		if(!strcmp(signal->s_name, "dev.485.kb.kei1.sourcer_down"))
 			change_direction = MOVE_DOWN;
@@ -292,7 +413,8 @@ void process_joystick_feeder(struct signal_s *signal, int value, struct executio
 
 }
 
-void process_mode_switch(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+static void process_mode_switch(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	signal->s_value = value;
 	int mode1 = signal_get(ctx, "dev.485.kb.kei1.mode1");
 	int mode2 = signal_get(ctx, "dev.485.kb.kei1.mode2");
 	int control1 = signal_get(ctx, "dev.485.kb.kei1.control1");
@@ -316,6 +438,9 @@ void process_mode_switch(struct signal_s *signal, int value, struct execution_co
 		control_mode = LISTEN_CABLE;
 		break;
 	}
+
+	printf("State: %d\n", state & CONTROL_MASK);
+	printf("Control mode: %d\n", control_mode);
 
 	if(post_conv) {
 		control_mode |= LISTEN_CONV;

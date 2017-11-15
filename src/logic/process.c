@@ -247,7 +247,7 @@ void start_Oil() {
 	inProgress[OIL] = STARTING;
 
 	WRITE_SIGNAL("dev.panel10.system_state_code",14);
-	Process_Timeout();
+	process_sirens_timeout(5, &inProgress[OIL], g_Ctx);
 	CHECK(OIL);
 
 	int bki = Get_Signal("dev.wago.bki_k2.M2");
@@ -280,7 +280,7 @@ void start_Hydratation() {
 	WRITE_SIGNAL("dev.485.kb.kbl.start_hydratation", 1);
 
 	WRITE_SIGNAL("dev.panel10.system_state_code",18);
-	Process_Timeout();
+	process_sirens_timeout(5, &inProgress[HYDRATATION], g_Ctx);
 	CHECK(HYDRATATION);
 
 	int bki = Get_Signal("dev.wago.bki_k5.M5");

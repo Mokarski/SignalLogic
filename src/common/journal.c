@@ -24,7 +24,7 @@ int write_journal (int state_code, int err_code){
 		char str_t[128]="";
 		s_time = time (NULL);
 		m_time = localtime (&s_time);
-		strftime (str_t, 128, "”%x | %X", m_time);
+		strftime (str_t, 128, "%x | %X", m_time);
     long file_size_now;
 
 		file_size_now = get_file_size();
@@ -41,7 +41,7 @@ int write_journal (int state_code, int err_code){
 					flag =-1;
 					}   else    {  
 							         
-							   fprintf (mf,"Date: %s; State: %d; Err: %d;\n",str_t, state_code, err_code);
+							   fprintf (mf,"%s;%d;%d;\n",str_t, state_code, err_code);
 							   flag=1;
 						    }			
    fclose (mf);   

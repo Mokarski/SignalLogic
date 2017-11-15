@@ -10,6 +10,7 @@
 #define  DEBUG 0 //may be 0,1,2,3
 #include <errno.h>
 #include <unistd.h>
+#include "logic_client.h"
 #include "process.h"
 #include "keyboard.h"
 #include "../common/journal.h"
@@ -27,6 +28,60 @@
 #define MODE_PUMP				(0x02 << 2)
 #define MODE_NORM				(0x03 << 2)
 #define MODE_STOP				128
+
+int  is_oil_station_started(struct execution_context_s *ctx) {
+	if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k2")) {
+		return 1;
+	}
+
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	return context->diagnostic;
+}
+
+void control_sirens(struct execution_context_s *ctx, int value) {
+	post_write_command(ctx, "dev.485.rsrs2.state_sound1_on", value);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound1_vol", 0);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound1_led", value);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound1_rl", 0);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound2_on", value);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound2_vol", 0);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound2_led", value);
+	post_write_command(ctx, "dev.485.rsrs2.state_sound2_rl", 0);
+	post_process(ctx);
+}
+
+void process_sirens_timeout(int timeout_msec, volatile int *run_condition, struct execution_context_s *ctx) {
+	struct timespec start, now;
+	control_sirens(ctx, 1);
+	
+	clock_gettime(CLOCK_REALTIME, &start);
+	while(*run_condition) {
+		clock_gettime(CLOCK_REALTIME, &now);
+		if((now.tv_sec > (start.tv_sec + 5)) || (now.tv_sec == (start.tv_sec + 5)) && (now.tv_nsec >= start.tv_nsec)) {
+			printf("Exiting by timeout\n");
+			break;
+		}
+		usleep(1000);
+	}
+
+	if(!(*run_condition)) {
+		printf("Forcibly stop sirens!\n");
+	}
+
+	control_sirens(ctx, 0);
+}
+
+void post_command(logic_command_t cmd, struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	struct logic_command_s *command = malloc(sizeof(struct logic_command_s));
+
+	command->command = cmd;
+	command->signal = signal;
+	command->value = value;
+
+  ring_buffer_push(context->command_buffer, command);
+	write(context->event_socket[1], "w", 1);
+}
 
 //char SignalHash[MAX_Signals][MAX_Signals]; //array for store index of Signals
 

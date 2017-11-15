@@ -163,7 +163,7 @@ void *create_mb_context() {
 }
 
 int modbus_signal_updated(struct mb_device_list_s *ctx, struct signal_s *signal) {
-	if(strstr(signal->s_name, "dev.485.kb.kei1.conveyor") != NULL)
+	if(strstr(signal->s_name,  "dev.485.rsrs2") != NULL)
 		printf("Posting update %s : %d\n", signal->s_name, signal->s_value);
 	post_update_command(ctx->mb_context, signal->s_name, signal->s_value);
 	post_process(ctx->mb_context);

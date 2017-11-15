@@ -26,11 +26,11 @@ void process_command_update(struct signal_s *signal, struct hash_s *hash, struct
 void process_command(int socket, struct cmd_packet_header_s *hdr, void *context);
 void parse_response(int socket, struct response_packet_header_s *, void *ctx);
 
-#define read_command(ctx, name) get_signals(ctx, name)
-#define write_command(ctx, name, value) write_signal(ctx, name, value)
-#define update_command(ctx, name, value) update_signal(ctx, name, value)
-#define subscribe_command(ctx, name, type) subscribe(ctx, name, type)
-#define unsubscribe_command(ctx, name, type) unsubscribe(ctx, name, type)
+void read_command(struct execution_context_s *ctx, char *name);
+void write_command(struct execution_context_s *ctx, char *name, int value);
+void update_command(struct execution_context_s *ctx, char *name, int value);
+void subscribe_command(struct execution_context_s *ctx, char *name, int type);
+void unsubscribe_command(struct execution_context_s *ctx, char *name, int value);
 
 void post_process(struct execution_context_s *ctx);
 void post_read_command(struct execution_context_s *ctx, char *name);

@@ -64,6 +64,24 @@ static volatile int g_mode = 0, g_workStarted = 0, g_diag = 0;
 volatile int buttons[32] = {0};
 volatile int joystick[32] = {0};
 
+void process_register_common(struct execution_context_s *ctx) {
+	processor_add(ctx, "dev.485.kb.kei1.sound_alarm", &process_sirenes);
+	processor_add(ctx, "dev.485.kb.pukonv485c.beep",  &process_sirenes);
+	processor_add(ctx, "dev.485.rpdu485.sound_beepl", &process_sirenes);
+
+	processor_add(ctx, "dev.485.kb.kei1.stop_alarm", &process_urgent_stop);
+	processor_add(ctx, "dev.485.rpdu485.kei.crit_stop", &process_urgent_stop);
+	processor_add(ctx, "dev.485.kb.pukonv485c.stop_alarm", &process_urgent_stop);
+}
+
+void process_urgent_stop(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+}
+
+void process_sirenes(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	printf("Writing sound state: %d\n", value);
+	control_sirens(ctx, value);
+}
+
 int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what) {
 	int oc  = signal_get(g_Ctx, name);       
 	struct timespec start, now;
@@ -407,10 +425,6 @@ void Process_Timeout() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-#define LEFT_TRACK_FW	0
-#define LEFT_TRACK_BW	1
-#define RIGHT_TRACK_FW	2
-#define RIGHT_TRACK_BW	3
 #define	ASSOCIATE_CONTROL(what, value, signal, panel_signal)	\
 if((joystick[what] & (value)) != (controls[what] & (value))) { \
 		controls[what] = controls[what] & ~(value) | (joystick[what] & value); \
@@ -693,30 +707,30 @@ void Work_Pumping() {
 void *Worker(void* arg) {
 #define MODE_CHANGED (oldMode != g_mode)
 #define CHECK_MODE()	if(MODE_CHANGED) {  }
-	int oldMode = g_mode;
-	printf("Entering mode processor\n");
-	while(1) {
-		if(!g_mode) {
-			oldMode = 0;
-			pthread_mutex_lock(&g_waitMutex);
-			g_workStarted = 0;
-			pthread_cond_wait(&g_waitCond, &g_waitMutex);
-			pthread_mutex_unlock(&g_waitMutex);
-		}
-
-		g_workStarted = 1;
-		printf("Mode switched to %d\n", g_mode);
-
-		switch(g_mode) {
-			case MODE_PUMPING:
-				Work_Pumping();
-				break;
-
-			case MODE_NORM:
-				Work_Norm();
-				break;
-		}
+	static int oldMode = 0;
+	//printf("Entering mode processor\n");
+	//while(1) {
+	if(!g_mode) {
+		oldMode = 0;
+		pthread_mutex_lock(&g_waitMutex);
+		g_workStarted = 0;
+		pthread_cond_wait(&g_waitCond, &g_waitMutex);
+		pthread_mutex_unlock(&g_waitMutex);
 	}
+
+	g_workStarted = 1;
+	printf("Mode switched to %d\n", g_mode);
+
+	switch(g_mode) {
+		case MODE_PUMPING:
+			Work_Pumping();
+			break;
+
+		case MODE_NORM:
+			Work_Norm();
+			break;
+	}
+	//}
 }
 
 void Init_Worker() {

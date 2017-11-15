@@ -207,6 +207,78 @@ void process_command_update(struct signal_s *signal, struct hash_s *hash, struct
   }
 }
 
+
+void read_command(struct execution_context_s *ctx, char *mask) {
+  char buffer[1024];
+  struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
+
+  if(!cmd_create_command(cmd, sizeof(buffer), mask, CMD_READ, 0)) {
+    return;
+  }
+
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
+void write_command(struct execution_context_s *ctx, char *mask, int value) {
+  char buffer[1024];
+  struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
+
+  if(!cmd_create_command(cmd, sizeof(buffer), mask, CMD_WRITE, 1, value)) {
+    return;
+  }
+
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
+void update_command(struct execution_context_s *ctx, char *mask, int value) {
+  char buffer[1024];
+  struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
+
+  if(!cmd_create_command(cmd, sizeof(buffer), mask, CMD_UPDATE, 1, value)) {
+    return;
+  }
+
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
+void subscribe_command(struct execution_context_s *ctx, char *mask, int type) {
+  char buffer[1024];
+  struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
+
+  if(!cmd_create_command(cmd, sizeof(buffer), mask, CMD_SUB, 1, type)) {
+    return;
+  }
+
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
+void unsubscribe_command(struct execution_context_s *ctx, char *mask, int type) {
+  char buffer[1024];
+  struct cmd_packet_header_s *cmd = cmd_create_packet(buffer);
+
+  if(!cmd_create_command(cmd, sizeof(buffer), mask, CMD_UNSUB, 1, type)) {
+    return;
+  }
+
+	if(packet_send_command(cmd, ctx->socket, ctx, &process_command, &parse_response) <= 0) {
+		perror("Send command error");
+		abort();
+	}
+}
+
+
 void post_process(struct execution_context_s *ctx) {
   write(ctx->event_socket, "w", 1);
 }
