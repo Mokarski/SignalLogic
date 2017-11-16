@@ -39,6 +39,7 @@ int  is_oil_station_started(struct execution_context_s *ctx) {
 }
 
 void control_sirens(struct execution_context_s *ctx, int value) {
+	printf("Writing sound state: %d\n", value);
 	post_write_command(ctx, "dev.485.rsrs2.state_sound1_on", value);
 	post_write_command(ctx, "dev.485.rsrs2.state_sound1_vol", 0);
 	post_write_command(ctx, "dev.485.rsrs2.state_sound1_led", value);

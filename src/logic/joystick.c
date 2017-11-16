@@ -93,6 +93,8 @@ void process_joystick_register(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.mode2", &process_mode_switch);
 	processor_add(ctx, "dev.485.kb.kei1.control1", &process_mode_switch);
 	processor_add(ctx, "dev.485.kb.kei1.control2", &process_mode_switch);
+	processor_add(ctx, "dev.485.kb.kei1.acceleration", &process_joystick_accel);
+	processor_add(ctx, "dev.485.rpdu485.kei.acceleration_up", &process_joystick_accel);
 
 	process_register_conv(ctx);
 	process_register_move(ctx);
@@ -381,6 +383,24 @@ void process_joystick_support(struct signal_s *signal, int value, struct executi
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on9", value);
 		update_command(ctx, "dev.panel10.kb.kei1.combain_support_down", value);
+		break;
+	}
+}
+
+void process_joystick_accel(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	int change_direction = 0;
+	if(!is_oil_station_started(ctx)) return;
+	if(control_mode & LISTEN_LOCAL) {
+		if(!strcmp(signal->s_name, "dev.485.kb.kei1.acceleration"))
+			change_direction = MOVE_UP;
+	} else if(control_mode & LISTEN_RPDU) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.acceleration_up"))
+			change_direction = MOVE_UP;
+	}
+
+	switch(change_direction) {
+	case MOVE_UP:
+		write_command(ctx, "dev.485.rsrs.rm_u1_on0", value);
 		break;
 	}
 }

@@ -21,6 +21,8 @@ struct logic_context_s {
 	volatile int 	  is_moving;
 	volatile int 	  trucks_started;
 	volatile int 	  oil_station_running;
+	volatile int 		control_mode;
+	volatile int 		function_mode;
 	int    					event_socket[2];
 };
 

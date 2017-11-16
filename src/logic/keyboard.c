@@ -78,7 +78,6 @@ void process_urgent_stop(struct signal_s *signal, int value, struct execution_co
 }
 
 void process_sirenes(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	printf("Writing sound state: %d\n", value);
 	control_sirens(ctx, value);
 }
 
@@ -440,75 +439,6 @@ if((joystick[what] & (value)) != (controls[what] & (value))) { \
 struct timespec last_moving;
 
 void Process_Joysticks() {
-	static int controls[16] = {0};
-
-	if(g_diag || enabled_Oil()) {
-		if(joystick[J_LEFT_T] && !controls[J_LEFT_T] && !controls[J_RIGHT_T] || 
-			 joystick[J_RIGHT_T] && !controls[J_RIGHT_T] && !controls[J_LEFT_T]) {
-			struct timespec now;
-			clock_gettime(CLOCK_REALTIME, &now);
-			if(now.tv_sec - last_moving.tv_sec > 6) {
-				Process_Timeout();
-			}
-		}
-
-		ASSOCIATE_CONTROL(J_LEFT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on10", "panel10.kb.kei2.left_truck_forward");
-		ASSOCIATE_CONTROL(J_LEFT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on11", "panel10.kb.kei2.left_truck_back");
-		ASSOCIATE_CONTROL(J_RIGHT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on0", "panel10.kb.kei2.right_truck_forward");
-		ASSOCIATE_CONTROL(J_RIGHT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on1", "panel10.kb.kei2.right_truck_back");
-
-		ASSOCIATE_CONTROL(J_ORGAN, JOYVAL_UP, "dev.485.rsrs.rm_u1_on6", "panel10.kb.kei3.exec_dev_up");
-		ASSOCIATE_CONTROL(J_ORGAN, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on7", "panel10.kb.kei2.exec_dev_down");
-		ASSOCIATE_CONTROL(J_ORGAN, JOYVAL_LEFT, "dev.485.rsrs.rm_u1_on3", "panel10.kb.kei2.exec_dev_left");
-		ASSOCIATE_CONTROL(J_ORGAN, JOYVAL_RIGHT, "dev.485.rsrs.rm_u1_on2", "panel10.kb.kei2.exec_dev_right");
-
-		ASSOCIATE_CONTROL(J_ACCEL, JOYVAL_UP, "dev.485.rsrs.rm_u1_on0", NULL);
-
-		ASSOCIATE_CONTROL(J_TELESCOPE, JOYVAL_UP, "dev.485.rsrs.rm_u1_on4", "panel10.kb.kei2.telescope_up");
-		ASSOCIATE_CONTROL(J_TELESCOPE, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on5", "panel10.kb.kei3.telescope_down");
-
-		ASSOCIATE_CONTROL(J_SUPPORT, JOYVAL_UP, "dev.485.rsrs.rm_u2_on8", "panel10.kb.kei2.combain_support_up");
-		ASSOCIATE_CONTROL(J_SUPPORT, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on9", "panel10.kb.kei1.combain_support_down");
-
-		ASSOCIATE_CONTROL(J_SOURCER, JOYVAL_UP, "dev.485.rsrs.rm_u1_on8", "panel10.kb.kei1.sourcer_up");
-		ASSOCIATE_CONTROL(J_SOURCER, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on9", "panel10.kb.kei1.sourcer_down");
-
-		ASSOCIATE_CONTROL(J_CONVEYOR, JOYVAL_UP, "dev.485.rsrs.rm_u2_on2", "panel10.kb.kei1.conveyor_up");
-		ASSOCIATE_CONTROL(J_CONVEYOR, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on3", "panel10.kb.kei1.conveyor_down");
-		ASSOCIATE_CONTROL(J_CONVEYOR, JOYVAL_LEFT, "dev.485.rsrs.rm_u2_on5", "panel10.kb.kei1.conveyor_left");
-		ASSOCIATE_CONTROL(J_CONVEYOR, JOYVAL_RIGHT, "dev.485.rsrs.rm_u2_on4", "panel10.kb.kei1.conveyor_right");
-
-		if(controls[J_LEFT_T] || controls[J_RIGHT_T]) {
-			clock_gettime(CLOCK_REALTIME, &last_moving);
-		}
-	} else {
-		DISABLE(J_LEFT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on10", "panel10.kb.kei2.left_truck_forward");
-		DISABLE(J_LEFT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on11", "panel10.kb.kei2.left_truck_back");
-		DISABLE(J_RIGHT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on0", "panel10.kb.kei2.right_truck_forward");
-		DISABLE(J_RIGHT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on1", "panel10.kb.kei2.right_truck_back");
-
-		DISABLE(J_ORGAN, JOYVAL_UP, "dev.485.rsrs.rm_u1_on6", "panel10.kb.kei3.exec_dev_up");
-		DISABLE(J_ORGAN, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on7", "panel10.kb.kei2.exec_dev_down");
-		DISABLE(J_ORGAN, JOYVAL_LEFT, "dev.485.rsrs.rm_u1_on3", "panel10.kb.kei2.exec_dev_left");
-		DISABLE(J_ORGAN, JOYVAL_RIGHT, "dev.485.rsrs.rm_u1_on2", "panel10.kb.kei2.exec_dev_right");
-
-		DISABLE(J_ACCEL, JOYVAL_UP, "dev.485.rsrs.rm_u1_on0", NULL);
-
-		DISABLE(J_TELESCOPE, JOYVAL_UP, "dev.485.rsrs.rm_u1_on4", "panel10.kb.kei2.telescope_up");
-		DISABLE(J_TELESCOPE, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on5", "panel10.kb.kei3.telescope_down");
-
-		DISABLE(J_SUPPORT, JOYVAL_UP, "dev.485.rsrs.rm_u2_on8", "panel10.kb.kei2.combain_support_up");
-		DISABLE(J_SUPPORT, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on9", "panel10.kb.kei1.combain_support_down");
-
-		DISABLE(J_SOURCER, JOYVAL_UP, "dev.485.rsrs.rm_u1_on8", "panel10.kb.kei1.sourcer_up");
-		DISABLE(J_SOURCER, JOYVAL_DOWN, "dev.485.rsrs.rm_u1_on9", "panel10.kb.kei1.sourcer_down");
-
-		DISABLE(J_CONVEYOR, JOYVAL_UP, "dev.485.rsrs.rm_u2_on2", "panel10.kb.kei1.conveyor_up");
-		DISABLE(J_CONVEYOR, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on3", "panel10.kb.kei1.conveyor_down");
-		DISABLE(J_CONVEYOR, JOYVAL_LEFT, "dev.485.rsrs.rm_u2_on5", "panel10.kb.kei1.conveyor_left");
-		DISABLE(J_CONVEYOR, JOYVAL_RIGHT, "dev.485.rsrs.rm_u2_on4", "panel10.kb.kei1.conveyor_right");
-	}
-	post_process(g_Ctx);
 }
 
 void Work_Norm(){

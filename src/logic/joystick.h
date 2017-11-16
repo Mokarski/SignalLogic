@@ -8,3 +8,4 @@ void process_joystick_execdev(struct signal_s *signal, int value, struct executi
 void process_joystick_telescope(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void process_joystick_support(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void process_joystick_feeder(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void process_joystick_accel(struct signal_s *signal, int value, struct execution_context_s *ctx);
