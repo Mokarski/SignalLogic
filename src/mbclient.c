@@ -162,11 +162,17 @@ void *create_mb_context() {
 #endif
 }
 
+int modbus_signal_error(struct mb_device_list_s *ctx, struct signal_s *signal, int error) {
+	printf("Error signal %s\n", signal->s_name);
+}
+
 int modbus_signal_updated(struct mb_device_list_s *ctx, struct signal_s *signal) {
 	int mbid = signal->s_register.dr_device.d_mb_id;
 	int reg = signal->s_register.dr_addr;
+
 	if(strstr(signal->s_name,  "dev.485.rpdu485") != NULL)
 		printf("Posting update %s : %d; register: %d; bit %d\n", signal->s_name, signal->s_value, ctx->device[mbid].reg[reg].value, signal->s_register.dr_bit);
+
 	post_update_command(ctx->mb_context, signal->s_name, signal->s_value);
 	post_process(ctx->mb_context);
 }
@@ -187,6 +193,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   dlist->mb_read_device  = &modbus_read;
   dlist->mb_write_device = &modbus_write;
 	dlist->mb_signal_updated = &modbus_signal_updated;
+	dlist->mb_signal_error = &modbus_signal_error;
   dlist->mb_context = ctx;
 
   ctx->clientstate = client;

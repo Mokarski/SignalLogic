@@ -11,22 +11,9 @@ struct execution_context_s *g_Ctx;
 
 #define WRITE_SIGNAL(signal, value) do { post_write_command(g_Ctx, signal, value); } while(0);
 #define READ_SIGNAL(signal)		post_read_command(g_Ctx,signal);
-#define CHECK(what) 	if(!inProgress[what]) return;
 
 void process_register_common(struct execution_context_s *ctx);
 void process_urgent_stop(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void process_sirenes(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
-//int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what);
-//void Process_Timeout();
 int  Get_Signal(char *name);
-void Init_Worker();
-void Worker_Set_Mode(int mode);
-void Process_Mode_Change();
-void Process_RED_BUTTON();
-void Process_Local_Kb();
-void Process_Cable_Kb();
-void Process_Radio_Kb();
-void Process_Pumping();
-void Process_Normal();
-void Process_Diag();

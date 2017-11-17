@@ -17,6 +17,7 @@ struct logic_context_s {
 	struct ring_buffer_s *command_buffer;
 	volatile struct timespec last_move;
 	volatile struct timespec last_sirens;
+	volatile int 	  initialized;
 	volatile int 	  diagnostic;
 	volatile int 	  is_moving;
 	volatile int 	  trucks_started;
@@ -24,6 +25,8 @@ struct logic_context_s {
 	volatile int 		control_mode;
 	volatile int 		function_mode;
 	volatile int 		stars;
+	volatile int 		sirenes;
+	volatile int 		in_progress[10];
 	int    					event_socket[2];
 };
 

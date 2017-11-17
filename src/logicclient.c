@@ -25,26 +25,23 @@
 #include "logic/processor.h"
 
 void event_update_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	static int oil_pump_started = 0;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+
 	if(processor_do(ctx, signal, value)) {
 		printf("Processor: signal %s processed\n", signal->s_name);
 		return;
+	} else if(context->initialized) {
+		signal->s_value = value;
+		control_all(signal, value, ctx);
 	}
-	if(
-		!strncmp(signal->s_name, "dev.485.kb", 10) ||
-		!strncmp(signal->s_name, "dev.485.rpdu", 12) ||
-		!strncmp(signal->s_name, "dev.485.pukonv", 12) 
-	 ) {
-		//printf("Updating signal [%s] value [%d => %d]\n", signal->s_name, signal->s_value, value);
-		//signal->s_value=value; //new value
-		//process_loop();
-	} else {
-		static int initialized = 0;
 
-		//while (1){
-		if(!initialized) {
-			initialized = Init();
-			return;
+	if(!context->initialized) {
+		signal->s_value = value;
+		context->initialized = init(signal, value, ctx);
+		if(context->initialized) {
+			process_joystick_register(ctx);
+			process_register_common(ctx);
+			process_local_post_register(ctx);
 		}
 	}
 }
@@ -65,20 +62,26 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
 	get_and_subscribe(ctx, "dev", SUB_UPDATE);
 	hash_create(&context->proc_hash);
   ctx->clientstate = context;
-	process_loop();
-	process_joystick_register(ctx);
-	process_register_common(ctx);
-	process_local_post_register(ctx);
+	process_local_post_switch_register(ctx);
   printf("Client initialized\n");
+	context->initialized = init(NULL, 0, ctx);
 }
 
 void client_thread_proc(struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
   fd_set socks;
+
+  printf("Stopping all\n");
+	stop_all(NULL, 0, ctx);
+  printf("Stopping sirens\n");
+	control_sirens(ctx, 0);
+  printf("Post processing\n");
+	post_process(ctx);
+
   printf("Started proc thread\n");
-	initDevices();
 
   while(ctx->running) {
+		printf("Running proc thread\n");
     FD_ZERO(&socks);
     FD_SET(context->event_socket[0], &socks);
 
@@ -91,6 +94,7 @@ void client_thread_proc(struct execution_context_s *ctx) {
       read(context->event_socket[0], localbuf, sizeof(localbuf));
     }
 
+		printf("Processing posted commands in proc thread\n");
     while(ring_buffer_size(context->command_buffer) > 0) {
 			struct logic_command_s *command = ring_buffer_get(context->command_buffer);
       ring_buffer_pop(context->command_buffer);

@@ -2,6 +2,19 @@
 #include <common/signal.h>
 #include <client/client.h>
 
+#define IDLE				0
+#define STARTING		1
+#define RUNNING			2
+
+#define OVERLOADING	0
+#define CONVEYOR		1
+#define STARS				2
+#define OIL					3
+#define HYDRATATION	4
+#define ORGAN				5
+#define PUMPING			6
+#define ALL					7
+
 void start_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void start_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void start_Stars(struct signal_s *signal, int reverse, struct execution_context_s *ctx);
@@ -10,26 +23,24 @@ void start_Hydratation(struct signal_s *signal, int value, struct execution_cont
 void start_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void start_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
-void control_Overloading();
-void control_Conveyor();
-void control_Stars();
-void control_Oil();
-void control_Hydratation();
-void control_Organ();
-void control_Pumping();
+void control_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void control_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void control_Stars(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void control_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void control_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void control_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void control_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
-void stop_Overloading();
-void stop_Conveyor();
-void stop_Stars();
-void stop_Oil();
-void stop_Hydratation();
-void stop_Organ();
-void stop_Pumping();
-void stop_Hydraulics();
+void stop_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Stars(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_Hydraulics(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
-void start_all(struct signal_s *signal, int value, struct execution_context_s *ctx);
-void control_all();
-void stop_all();
+void control_all(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void stop_all(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
 void set_Diagnostic(int val);
-int enabled_Oil();

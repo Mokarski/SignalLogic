@@ -6,7 +6,7 @@ LDFLAGS_ARM+=-lpthread `pkg-config --libs /home/opc/Kombain/libmodbus-3.0.6/libm
 CFLAGS+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 CFLAGS_ARM+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 
-PROGRAMS_ARM=signalrouter client_logic client_modbus client_wago client_debug
+PROGRAMS_ARM=signalrouter client_logic client_modbus client_wago
 PROGRAMS=client_virtual $(PROGRAMS_ARM)
 
 LOGIC_SRC=src/logic/keyboard.c src/logic/process.c src/logic/logic_client.c src/logic/joystick.c src/logic/processor.c src/logic/local.c
@@ -31,11 +31,8 @@ client_wago: $(COMMON) src/client/client.c src/client/clientcommand.c src/wagocl
 
 client_logic: $(COMMON) src/client/client.c src/client/clientcommand.c src/logicclient.c src/common/ringbuffer.c  src/common/journal.c  src/client/signalhelper.c $(LOGIC_SRC)
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ -lrt -lpthread
+	$(CC) $(CFLAGS) -o $@-local $^ -lrt -lpthread
 	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-
-client_debug: $(COMMON) src/client/client.c src/client/clientcommand.c src/debugclient.c src/common/ringbuffer.c  src/common/journal.c  src/client/signalhelper.c $(LOGIC_SRC)
-	#$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ -lrt -lpthread
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 upload: $(PROGRAMS_ARM) signals.cfg libmodbus.so.5.0.5 start-all 
 	for target in $^; do PROGRAM=$$target $(MAKE) .upload-$$target; done;

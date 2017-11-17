@@ -43,6 +43,7 @@ struct mb_device_reg_s {
 struct mb_device_s {
   int    mb_id;
   int    mb_reg_max;
+	int		 mb_last_state;
   int    needs_sync;
   struct mb_device_reg_s reg[MAX_REG];
   int    is_urgent;
@@ -50,11 +51,11 @@ struct mb_device_s {
 
 // Device list with callbacks for reading and writing registers
 struct mb_device_list_s {
-	int		 process_times;
   void   *mb_context;
   int    (*mb_read_device)(struct mb_device_list_s *ctx, int mb_id, int reg);
   int    (*mb_write_device)(struct mb_device_list_s *ctx, int mb_id, int reg, int value);
   int    (*mb_signal_updated)(struct mb_device_list_s *ctx, struct signal_s *signal);
+  int    (*mb_signal_error)(struct mb_device_list_s *ctx, struct signal_s *signal, int error);
   struct mb_device_s device[MAX_DEVS];
   int    dev_max;
   pthread_mutex_t mutex;

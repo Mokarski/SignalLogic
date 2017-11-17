@@ -141,8 +141,12 @@ static void mb_dev_flush_write(struct mb_device_list_s *dlist) {
     int regvalue = wr->reg->value;
     regvalue = regvalue & ~(wr->reg->write_mask);
     regvalue = regvalue | (wr->reg->write_value & wr->reg->write_mask);
-    if(dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue) < 0)
-			dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue); // Try again
+		dlist->device[wr->dev_id].mb_last_state = dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue);
+    if(dlist->device[wr->dev_id].mb_last_state  < 0) {
+			// Try again later
+			usleep(5000);
+			dlist->device[wr->dev_id].mb_last_state = dlist->mb_write_device(dlist, wr->dev_id, wr->reg_id, regvalue);
+		}
     wr->reg->write_value = 0;
     wr->reg->write_mask  = 0;
     free(wr);
@@ -160,11 +164,13 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
 		}
 
     if(dlist->device[i].mb_reg_max > 0) {
-			if(dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max) >= 0) {
-				for(j = 0; dlist->mb_signal_updated && (j < dlist->device[i].mb_reg_max); j ++) {
-					int value = 0;
-					list = dlist->device[i].reg[j].signals;
-					while(list) {
+			int last_error_state = dlist->device[i].mb_last_state;
+			dlist->device[i].mb_last_state = dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
+			for(j = 0; dlist->mb_signal_updated && (j < dlist->device[i].mb_reg_max); j ++) {
+				list = dlist->device[i].reg[j].signals;
+				while(list) {
+					if(dlist->device[i].mb_last_state >= 0) {
+						int value = 0;
 						switch(list->signal->s_register.dr_type) {
 						case 'i':
 							if(dlist->device[i].reg[j].value != list->signal->s_value) {
@@ -181,16 +187,17 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
 							}
 							break;
 						}
-						//if(mb_dev_check_signal(dlist, list->signal)) {
-						//}
-						list = list->next;
 					}
+					if((last_error_state != dlist->device[i].mb_last_state) && dlist->mb_signal_error) {
+						dlist->mb_signal_error(dlist, list->signal, dlist->device[i].mb_last_state);
+					}
+					//if(mb_dev_check_signal(dlist, list->signal)) {
+					//}
+					list = list->next;
 				}
 			}
     }
   }
-
-	dlist->process_times ++;
 }
 
 int mb_dev_check_signal(struct mb_device_list_s *dlist, struct signal_s *signal) {

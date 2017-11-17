@@ -2,32 +2,19 @@
 #include "keyboard.h"
 #include <time.h>
 #include <stdio.h>
+#include <logic/logic_client.h>
 #include <inttypes.h>
 
-#define IDLE				0
-#define STARTING		1
-#define RUNNING			2
+#define CHECK(what) 	if(!context->in_progress[what]) return;
 
-#define OVERLOADING	0
-#define CONVEYOR		1
-#define STARS				2
-#define OIL					3
-#define HYDRATATION	4
-#define ORGAN				5
-#define PUMPING			6
-#define ALL					7
-
-volatile int inProgress[6] = {0};
-volatile int debugging = 0;
-
-int waitForFeedback(char *name, int timeout, volatile int *what) {
+int waitForFeedback(struct execution_context_s *ctx, char *name, int timeout, volatile int *what) {
 	int oc  = 0;       
 	struct timespec start, now;
 	clock_gettime(CLOCK_REALTIME, &start);
 
 	while(!oc && (*what)) {
 		int exState;
-		oc  = Get_Signal(name);
+		oc  = signal_get(ctx, name);
 		if(oc) continue;
 		usleep(10000);
 		post_process(g_Ctx);
@@ -41,16 +28,7 @@ int waitForFeedback(char *name, int timeout, volatile int *what) {
 	return oc;
 }
 
-void set_Diagnostic(int val) {
-	debugging = val;
-}
 void Pressure_Show() {
-	//READ_SIGNAL("485.ad2.adc1_phys_value");
-	//READ_SIGNAL("485.ad2.adc2_phys_value");
-	//READ_SIGNAL("485.ad2.adc3_phys_value");
-	//READ_SIGNAL("485.ad2.adc4_phys_value");
-	//READ_SIGNAL("485.ad3.adc1_phys_value");
-  
 	int H1= Get_Signal("dev.485.ad2.adc1_phys_value");
 	int H2= Get_Signal("dev.485.ad2.adc2_phys_value");
 	int H3= Get_Signal("dev.485.ad2.adc3_phys_value");
@@ -147,295 +125,304 @@ void Voltage_Show() {
 }
 
 void start_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	if(inProgress[OVERLOADING]) return;
-	inProgress[OVERLOADING] = STARTING;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[OVERLOADING]) return;
+	context->in_progress[OVERLOADING] = STARTING;
 	printf("Starting overloading\n");
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_reloader", 1);
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.reloader_green", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.kb.kbl.start_reloader", 1);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.reloader_green", 1);
 
-	WRITE_SIGNAL("dev.panel10.system_state_code",20);
-	process_sirens_timeout(5, &inProgress[OVERLOADING], ctx);
+	post_update_command(ctx, "dev.panel10.system_state_code",20);
+	process_sirens_timeout(5, &context->in_progress[OVERLOADING], ctx);
 	CHECK(OVERLOADING);
 
-	int bki = Get_Signal("dev.wago.bki_k6.M6");
+	int bki = signal_get(ctx, "dev.wago.bki_k6.M6");
 	if(bki) {
 		printf("BKI error!\n");
-		stop_Overloading();
+		stop_Overloading(signal, value, ctx);
 	}
-	control_Overloading(); // Check temp
+	control_Overloading(signal, value, ctx); // Check temp
 	CHECK(OVERLOADING);
 
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka5_1", 1);
-//	WRITE_SIGNAL("dev.panel10.system_state_code",20);
-	WRITE_SIGNAL("dev.panel10.kb.key.reloader",1);
-	if(!waitForFeedback("dev.wago.oc_mdi1.oc_w_k5", 3, &inProgress[OVERLOADING])) {
-		stop_Overloading();
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka5_1", 1);
+//	post_write_command(ctx, "dev.panel10.system_state_code",20);
+	post_update_command(ctx, "dev.panel10.kb.key.reloader",1);
+	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k5", 3, &context->in_progress[OVERLOADING])) {
+		stop_Overloading(signal, value, ctx);
 		return;
 	}
 
-	inProgress[OVERLOADING] = RUNNING;
-	control_Overloading();
+	context->in_progress[OVERLOADING] = RUNNING;
+	control_Overloading(signal, value, ctx);
 }
 
 void start_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	if(inProgress[CONVEYOR]) return;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[CONVEYOR]) return;
 	printf("Starting conveyor\n");
-	inProgress[CONVEYOR] = STARTING;
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.conveyor_green", 1);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_conveyor", 1);
+	context->in_progress[CONVEYOR] = STARTING;
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.conveyor_green", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.start_conveyor", 1);
 
-	WRITE_SIGNAL("dev.panel10.system_state_code",16);
-	process_sirens_timeout(5, &inProgress[CONVEYOR], ctx);
+	post_update_command(ctx, "dev.panel10.system_state_code",16);
+	process_sirens_timeout(5, &context->in_progress[CONVEYOR], ctx);
 	CHECK(CONVEYOR);
 
-	int bki = Get_Signal("dev.wago.bki_k3_k4.M3_M4");
+	int bki = signal_get(ctx, "dev.wago.bki_k3_k4.M3_M4");
 	if(bki) {
 		printf("BKI error!\n");
-		stop_Conveyor();
+		stop_Conveyor(signal, value, ctx);
 	}
 	CHECK(CONVEYOR);
 
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka3_1", 1);
-	WRITE_SIGNAL("dev.panel10.system_state_code",2);
-	WRITE_SIGNAL("dev.panel10.kb.key.conveyor",1);
-	if(!waitForFeedback("dev.wago.oc_mdi1.oc_w_k3", 3, &inProgress[CONVEYOR])) {
-		stop_Conveyor();
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka3_1", 1);
+	post_update_command(ctx, "dev.panel10.system_state_code",2);
+	post_update_command(ctx, "dev.panel10.kb.key.conveyor",1);
+	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k3", 3, &context->in_progress[CONVEYOR])) {
+		stop_Conveyor(signal, value, ctx);
 		return;
 	}
 
-	inProgress[CONVEYOR] = RUNNING;
-	control_Conveyor();
+	context->in_progress[CONVEYOR] = RUNNING;
+	control_Conveyor(signal, value, ctx);
 }
 
 void start_Stars(struct signal_s *signal, int reverse, struct execution_context_s *ctx) {
-	if(inProgress[STARS]) return;
-	inProgress[STARS] = STARTING;
-	control_Stars();
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[STARS]) return;
+	context->in_progress[STARS] = STARTING;
+	control_Stars(signal, reverse, ctx);
 	CHECK(STARS);
 	printf("Starting stars%s\n", reverse ? " reverse" : "");
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.loader_green", 1);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_stars", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.loader_green", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.start_stars", 1);
 
-	WRITE_SIGNAL("dev.panel10.system_state_code",40);
-	process_sirens_timeout(5, &inProgress[STARS], ctx);
+	post_update_command(ctx, "dev.panel10.system_state_code",40);
+	process_sirens_timeout(5, &context->in_progress[STARS], ctx);
 
 	CHECK(STARS);
 	if(!reverse) {
-		WRITE_SIGNAL("dev.485.rsrs.rm_u2_on7", 0);
-		WRITE_SIGNAL("dev.485.rsrs.rm_u2_on6", 1);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on7", 0);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on6", 1);
 	} else {
-		WRITE_SIGNAL("dev.485.rsrs.rm_u2_on6", 0);
-		WRITE_SIGNAL("dev.485.rsrs.rm_u2_on7", 1);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on6", 0);
+		post_write_command(ctx, "dev.485.rsrs.rm_u2_on7", 1);
 	}
-	WRITE_SIGNAL("dev.panel10.kb.key.stars",1);
-	WRITE_SIGNAL("dev.panel10.system_state_code",3);
-	inProgress[STARS] = RUNNING;
-	control_Stars();
-}
-
-int enabled_Oil(){
-	return inProgress[OIL] == RUNNING;
+	post_update_command(ctx, "dev.panel10.kb.key.stars",1);
+	post_update_command(ctx, "dev.panel10.system_state_code",3);
+	context->in_progress[STARS] = RUNNING;
+	control_Stars(signal, reverse, ctx);
 }
 
 void start_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	if(inProgress[OIL]) return;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[OIL]) return;
 	printf("Starting oil station\n");
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.oil_station_green", 1);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_oil_station", 1);
-	inProgress[OIL] = STARTING;
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 1);
+	context->in_progress[OIL] = STARTING;
 
-	WRITE_SIGNAL("dev.panel10.system_state_code",14);
-	process_sirens_timeout(5, &inProgress[OIL], ctx);
+	post_update_command(ctx, "dev.panel10.system_state_code",14);
+	process_sirens_timeout(5, &context->in_progress[OIL], ctx);
 	CHECK(OIL);
 
-	int bki = Get_Signal("dev.wago.bki_k2.M2");
+	int bki = signal_get(ctx, "dev.wago.bki_k2.M2");
 	if(bki) {
 		printf("BKI error!\n");
-		stop_Oil();
+		stop_Oil(signal, value, ctx);
 	}
-	control_Oil(); // Check temp
+	control_Oil(signal, value, ctx); // Check temp
 	CHECK(OIL);
 
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka2_1", 1);
-	WRITE_SIGNAL("dev.panel10.system_state_code",4);
-	WRITE_SIGNAL ("panel10.kb.key.oil_station",1);
-	if(!waitForFeedback("dev.wago.oc_mdi1.oc_w_k2", 3, &inProgress[OIL])) {
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka2_1", 1);
+	post_update_command(ctx, "dev.panel10.system_state_code",4);
+	post_update_command(ctx, "panel10.kb.key.oil_station",1);
+	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k2", 3, &context->in_progress[OIL])) {
 		printf("Feedback error, stopping oil station\n");
-		stop_Oil();
+		stop_Oil(signal, value, ctx);
 		return;
 	}
 
-	inProgress[OIL] = RUNNING;
-	control_Oil();
+	context->in_progress[OIL] = RUNNING;
+	control_Oil(signal, value, ctx);
 }
 
 void start_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	if(inProgress[HYDRATATION]) return;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[HYDRATATION]) return;
 	printf("Starting hydratation\n");
-	inProgress[HYDRATATION] = STARTING;
+	context->in_progress[HYDRATATION] = STARTING;
 
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_hydratation", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.kb.kbl.start_hydratation", 1);
 
-	WRITE_SIGNAL("dev.panel10.system_state_code",18);
-	process_sirens_timeout(5, &inProgress[HYDRATATION], ctx);
+	post_update_command(ctx, "dev.panel10.system_state_code",18);
+	process_sirens_timeout(5, &context->in_progress[HYDRATATION], ctx);
 	CHECK(HYDRATATION);
 
-	int bki = Get_Signal("dev.wago.bki_k5.M5");
+	int bki = signal_get(ctx, "dev.wago.bki_k5.M5");
 	if(bki) {
 		printf("BKI error!\n");
-		stop_Hydratation();
+		stop_Hydratation(signal, value, ctx);
 	}
-	control_Hydratation(); // Check temp
+	control_Hydratation(signal, value, ctx); // Check temp
 	CHECK(HYDRATATION);
 
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka4_1", 1);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.water1", 1);
-	WRITE_SIGNAL("dev.panel10.system_state_code",5);
-	WRITE_SIGNAL("dev.panel10.kb.key.hydratation",1);
-	if(!waitForFeedback("dev.wago.oc_mdi1.oc_w_k4", 3, &inProgress[HYDRATATION])) {
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka4_1", 1);
+	post_write_command(ctx, "dev.wago.oc_mdo1.water1", 1);
+	post_update_command(ctx, "dev.panel10.system_state_code",5);
+	post_update_command(ctx, "dev.panel10.kb.key.hydratation",1);
+	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k4", 3, &context->in_progress[HYDRATATION])) {
 		printf("Feedback error, stopping hydratation\n");
-		stop_Hydratation();
+		stop_Hydratation(signal, value, ctx);
 		return;
 	}
 
-	inProgress[HYDRATATION] = RUNNING;
-	control_Hydratation();
+	context->in_progress[HYDRATATION] = RUNNING;
+	control_Hydratation(signal, value, ctx);
 }
 
 void start_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	if(inProgress[PUMPING]) return;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[PUMPING]) return;
 	printf("Starting hydratation\n");
-	inProgress[PUMPING] = STARTING;
+	context->in_progress[PUMPING] = STARTING;
 
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_oil_pump", 1);
-	WRITE_SIGNAL("dev.panel10.system_state_code",18);
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.kb.kbl.start_oil_pump", 1);
+	post_update_command(ctx, "dev.panel10.system_state_code",18);
 
-	process_sirens_timeout(5, &inProgress[PUMPING], ctx);
+	process_sirens_timeout(5, &context->in_progress[PUMPING], ctx);
 	CHECK(PUMPING);
 
-	int bki = Get_Signal("dev.wago.bki_k7.M7");
+	int bki = signal_get(ctx, "dev.wago.bki_k7.M7");
 	if(bki) {
 		printf("BKI error!\n");
-		stop_Pumping();
+		stop_Pumping(signal, value, ctx);
 	}
 
-	control_Pumping(); // Check temp
+	control_Pumping(signal, value, ctx); // Check temp
 	CHECK(PUMPING);
 
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka6_1", 1);
-	if(!waitForFeedback("dev.wago.oc_mdi1.oc_w_k6", 3, &inProgress[PUMPING])) {
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka6_1", 1);
+	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k6", 3, &context->in_progress[PUMPING])) {
 		printf("Feedback error, stopping pumping\n");
-		stop_Pumping();
+		stop_Pumping(signal, value, ctx);
 		return;
 	}
 
-	inProgress[PUMPING] = RUNNING;
-	control_Pumping();
+	context->in_progress[PUMPING] = RUNNING;
+	control_Pumping(signal, value, ctx);
 }
 
 void start_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	if(inProgress[HYDRATATION] != RUNNING && !debugging) return;
-	if(inProgress[ORGAN]) return;
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(context->in_progress[HYDRATATION] != RUNNING && !context->diagnostic) return;
+	if(context->in_progress[ORGAN]) return;
 	printf("Starting organ\n");
-	inProgress[ORGAN] = STARTING;
+	context->in_progress[ORGAN] = STARTING;
 
-	WRITE_SIGNAL("dev.485.kb.kbl.led_contrast", 50);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_exec_dev", 1);
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.exec_dev_green", 1);
+	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+	post_write_command(ctx, "dev.485.kb.kbl.start_exec_dev", 1);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.exec_dev_green", 1);
 
 
-	WRITE_SIGNAL("dev.panel10.system_state_code",12);
-	process_sirens_timeout(5, &inProgress[ORGAN], ctx);
+	post_update_command(ctx, "dev.panel10.system_state_code",12);
+	process_sirens_timeout(5, &context->in_progress[ORGAN], ctx);
 	CHECK(ORGAN);
 
-	int bki = Get_Signal("dev.wago.bki_k1.M1");
+	int bki = signal_get(ctx, "dev.wago.bki_k1.M1");
 	if(bki) {
 		printf("BKI error!\n");
-		stop_Organ();
+		stop_Organ(signal, value, ctx);
 	}
-	control_Organ(); // Check temp
+	control_Organ(signal, value, ctx); // Check temp
 	CHECK(ORGAN);
 
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka1_1", 1);
-	WRITE_SIGNAL("dev.panel10.system_state_code",6);
-	WRITE_SIGNAL("dev.panel10.kb.key.exec_dev",1);
-	if(!waitForFeedback("dev.wago.oc_mdi1.oc_w_k1", 3, &inProgress[ORGAN])) {
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka1_1", 1);
+	post_update_command(ctx, "dev.panel10.system_state_code",6);
+	post_update_command(ctx, "dev.panel10.kb.key.exec_dev",1);
+	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k1", 3, &context->in_progress[ORGAN])) {
 		printf("Feedback error, stopping organ\n");
-		stop_Organ();
+		stop_Organ(signal, value, ctx);
 		return;
 	}
 
-	inProgress[ORGAN] = RUNNING;
-	control_Organ();
+	context->in_progress[ORGAN] = RUNNING;
+	control_Organ(signal, value, ctx);
 }
 
 
-void control_Overloading() {
-	if(!inProgress[OVERLOADING]) return;
-	int temp = Get_Signal("dev.wago.oc_temp.pt100_m6");
-	int tempRelay = Get_Signal("dev.wago.ts_m1.rele_T_m6");
+void control_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[OVERLOADING]) return;
+	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m6");
+	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m6");
 
 	if(tempRelay) {
 		printf("Overloading temp relay error!\n");
-		stop_Overloading();
+		stop_Overloading(signal, value, ctx);
 	}
 }
 
-void control_Conveyor() {
-	if(!inProgress[CONVEYOR]) return;
-	int temp1 = Get_Signal("dev.wago.oc_temp.pt100_m3");
-	int temp2 = Get_Signal("dev.wago.oc_temp.pt100_m4");
-	int tempRelay1 = Get_Signal("dev.wago.ts_m1.rele_T_m3");
-	int tempRelay2 = Get_Signal("dev.wago.ts_m1.rele_T_m4");
+void control_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[CONVEYOR]) return;
+	int temp1 = signal_get(ctx, "dev.wago.oc_temp.pt100_m3");
+	int temp2 = signal_get(ctx, "dev.wago.oc_temp.pt100_m4");
+	int tempRelay1 = signal_get(ctx, "dev.wago.ts_m1.rele_T_m3");
+	int tempRelay2 = signal_get(ctx, "dev.wago.ts_m1.rele_T_m4");
 
 	if(tempRelay1 || tempRelay2) {
 		printf("Conveyor temp relay error!\n");
-		stop_Conveyor();
+		stop_Conveyor(signal, value, ctx);
 	}
 }
 
-void control_Stars() {
-	if(!inProgress[STARS]) return;
-	if(inProgress[OIL] != RUNNING && !debugging) {
+void control_Stars(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[STARS]) return;
+	if(context->in_progress[OIL] != RUNNING && !context->diagnostic) {
 		printf("Oil station is not running!");
-		stop_Stars();
+		stop_Stars(signal, value, ctx);
 	}
 }
 
-void control_Oil() {
-	if(!inProgress[OIL]) return;
-	int temp = Get_Signal("dev.wago.oc_temp.pt100_m2");
-	int tempRelay = Get_Signal("dev.wago.ts_m1.rele_T_m2");
+void control_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[OIL]) return;
+	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m2");
+	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m2");
 
 	if(tempRelay) {
 		printf("Oil station temp relay error!\n");
-		stop_Oil();
+		stop_Oil(signal, value, ctx);
 	}
 }
 
-void control_Hydratation() {
-	if(!inProgress[HYDRATATION]) return;
-	int temp = Get_Signal("dev.wago.oc_temp.pt100_m5");
-	int tempRelay = Get_Signal("dev.wago.ts_m1.rele_T_m5");
+void control_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[HYDRATATION]) return;
+	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m5");
+	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m5");
 
 	if(tempRelay) {
 		printf("Organ temp relay error!\n");
-		stop_Hydratation();
+		stop_Hydratation(signal, value, ctx);
 	}
 }
 
-void control_Organ() {
-	if(!inProgress[ORGAN]) return;
-	if(inProgress[HYDRATATION] != RUNNING && !debugging) stop_Organ();
-	int temp = Get_Signal("dev.wago.oc_temp.pt100_m1");
-	int tempRelay = Get_Signal("dev.wago.ts_m1.rele_T_m1");
-	int waterFlow = Get_Signal("dev.485.ad1.adc3.flow");
+void control_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[ORGAN]) return;
+	if(context->in_progress[HYDRATATION] != RUNNING && !context->diagnostic) stop_Organ(signal, value, ctx);
+	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m1");
+	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m1");
+	int waterFlow = signal_get(ctx, "dev.485.ad1.adc3.flow");
 	//READ_SIGNAL("485.ad1.adc3.flow");
 
 	if(waterFlow) {
@@ -443,101 +430,117 @@ void control_Organ() {
 
 	if(tempRelay) {
 		printf("Organ temp relay error!\n");
-		stop_Organ();
+		stop_Organ(signal, value, ctx);
 	}
 }
 
-void control_Pumping() {
-	if(!inProgress[PUMPING]) return;
-	int temp = Get_Signal("wago.oc_temp.pt100_m7");
-	int tempRelay = Get_Signal("dev.wago.ts_m1.rele_T_m7");
+void control_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->in_progress[PUMPING]) return;
+	int temp = signal_get(ctx, "wago.oc_temp.pt100_m7");
+	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m7");
 
 	if(tempRelay) {
 		printf("Pumping temp relay error!\n");
-		stop_Pumping();
+		stop_Pumping(signal, value, ctx);
 	}
 }
 
-void stop_Pumping() {
+void stop_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	printf("Stopping pumping\n");
-	inProgress[PUMPING] = 0;
-	WRITE_SIGNAL("dev.485.kb.kbl.start_oil_pump", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka6_1", 0);	
+	context->in_progress[PUMPING] = 0;
+	post_write_command(ctx, "dev.485.kb.kbl.start_oil_pump", 0);
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka6_1", 0);	
 }
 
-void stop_Overloading() {
-	//if(!inProgress[OVERLOADING]) return;
+void stop_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	//if(!context->in_progress[OVERLOADING]) return;
 	printf("Stopping overloading\n");
-	inProgress[OVERLOADING] = 0;
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.reloader_green", 0);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_reloader", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka5_1", 0);	
-	WRITE_SIGNAL("dev.panel10.kb.key.reloader",0);
+	context->in_progress[OVERLOADING] = 0;
+	post_write_command(ctx, "dev.485.rpdu485.kbl.reloader_green", 0);
+	post_write_command(ctx, "dev.485.kb.kbl.start_reloader", 0);
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka5_1", 0);	
+	post_update_command(ctx, "dev.panel10.kb.key.reloader",0);
 }
 
-void stop_Conveyor() {
-	//if(!inProgress[CONVEYOR]) return;
+void stop_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	//if(!context->in_progress[CONVEYOR]) return;
 	printf("Stopping conveyor\n");
-	inProgress[CONVEYOR] = 0;
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.conveyor_green", 0);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_conveyor", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka3_1", 0);
-	WRITE_SIGNAL("dev.panel10.kb.key.conveyor",0);
+	context->in_progress[CONVEYOR] = 0;
+	post_write_command(ctx, "dev.485.rpdu485.kbl.conveyor_green", 0);
+	post_write_command(ctx, "dev.485.kb.kbl.start_conveyor", 0);
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka3_1", 0);
+	post_update_command(ctx, "dev.panel10.kb.key.conveyor",0);
 }
 
-void stop_Stars() {
-	//if(!inProgress[STARS]) return;
+void stop_Stars(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	//if(!context->in_progress[STARS]) return;
 	printf("Stopping stars\n");
-	inProgress[STARS] = 0;
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.loader_green", 0);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_stars", 0);
-	WRITE_SIGNAL("dev.485.rsrs.rm_u2_on6", 0);
-	WRITE_SIGNAL("dev.485.rsrs.rm_u2_on7", 0);
+	context->in_progress[STARS] = 0;
+	post_write_command(ctx, "dev.485.rpdu485.kbl.loader_green", 0);
+	post_write_command(ctx, "dev.485.kb.kbl.start_stars", 0);
+	post_write_command(ctx, "dev.485.rsrs.rm_u2_on6", 0);
+	post_write_command(ctx, "dev.485.rsrs.rm_u2_on7", 0);
 
-	WRITE_SIGNAL("dev.panel10.kb.key.stars",0);
+	post_update_command(ctx, "dev.panel10.kb.key.stars",0);
 }
 
-void stop_Oil() {
-	if(!debugging) {
-		stop_Stars();
-		stop_Hydraulics();
+void stop_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	if(!context->diagnostic) {
+		stop_Stars(signal, value, ctx);
+		stop_Hydraulics(signal, value, ctx);
 	}
-	//if(!inProgress[OIL]) return;
+	//if(!context->in_progress[OIL]) return;
 	printf("Stopping oil station\n");
-	inProgress[OIL] = 0;
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.oil_station_green", 0);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_oil_station", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka2_1", 0);
+	context->in_progress[OIL] = 0;
+	printf("Stopping oil station\n");
+	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 0);
+	printf("Stopping oil station\n");
+	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 0);
+	printf("Stopping oil station\n");
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka2_1", 0);
+	printf("Stopping oil station\n");
 
-	WRITE_SIGNAL("dev.panel10.kb.key.oil_station",0);
+	post_update_command(ctx, "dev.panel10.kb.key.oil_station",0);
+	printf("Oil station stopped\n");
 }
 
-void stop_Hydratation() {
-	inProgress[HYDRATATION] = 0;
-	if(!debugging) {
-		stop_Organ();
+void stop_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	context->in_progress[HYDRATATION] = 0;
+	if(!context->diagnostic) {
+		stop_Organ(signal, value, ctx);
 	}
-	WRITE_SIGNAL("dev.485.kb.kbl.start_hydratation", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka4_1", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.water1", 0);
+	printf("Stopping hydratation\n");
+	post_write_command(ctx, "dev.485.kb.kbl.start_hydratation", 0);
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka4_1", 0);
+	post_write_command(ctx, "dev.wago.oc_mdo1.water1", 0);
 
-	WRITE_SIGNAL("dev.panel10.kb.key.hydratation",0);
+	post_update_command(ctx, "dev.panel10.kb.key.hydratation",0);
 }
 
-void stop_Organ() {
-	inProgress[ORGAN] = 0;
-	WRITE_SIGNAL("dev.485.rpdu485.kbl.exec_dev_green", 0);
-	WRITE_SIGNAL("dev.485.kb.kbl.start_exec_dev", 0);
-	WRITE_SIGNAL("dev.wago.oc_mdo1.ka1_1", 0);
-	WRITE_SIGNAL("dev.panel10.kb.key.exec_dev",0);
+void stop_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	context->in_progress[ORGAN] = 0;
+	printf("Stopping organ\n");
+	post_write_command(ctx, "dev.485.rpdu485.kbl.exec_dev_green", 0);
+	post_write_command(ctx, "dev.485.kb.kbl.start_exec_dev", 0);
+	post_write_command(ctx, "dev.wago.oc_mdo1.ka1_1", 0);
+	post_update_command(ctx, "dev.panel10.kb.key.exec_dev",0);
 }
 
 #define	DISABLE(what, value, signal, panel_signal)	\
 		if(1) { \
-			WRITE_SIGNAL(signal, 0); \
-			if(panel_signal != NULL) WRITE_SIGNAL(panel_signal, 0); \
+			post_write_command(ctx, signal, 0); \
+			if(panel_signal != NULL) post_write_command(ctx, panel_signal, 0); \
 		}
-void stop_Hydraulics() {
+void stop_Hydraulics(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	DISABLE(J_LEFT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on10", NULL);
 	DISABLE(J_LEFT_T, JOYVAL_DOWN, "dev.485.rsrs.rm_u2_on11", NULL);
 	DISABLE(J_RIGHT_T, JOYVAL_UP, "dev.485.rsrs.rm_u2_on0", NULL);
@@ -565,50 +568,23 @@ void stop_Hydraulics() {
 	DISABLE(J_CONVEYOR, JOYVAL_RIGHT, "dev.485.rsrs.rm_u2_on4", NULL);
 }
 
-void start_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	inProgress[ALL] = STARTING;
-	int step = 0;
-	for(step = 0; (step < 6) && inProgress[ALL]; step ++) {
-		switch(step) {
-		case 0:
-			start_Oil(signal, value, ctx);
-			break;
-		case 1:
-			start_Overloading(signal, value, ctx);
-			break;
-		case 2:
-			start_Conveyor(signal, value, ctx);
-			break;
-		case 3:
-			start_Stars(signal, 0, ctx);
-			break;
-		case 4:
-			start_Hydratation(signal, value, ctx);
-			break;
-		case 5:
-			start_Organ(signal, value, ctx);
-			break;
-		default:
-			break;
-		}
-	}
+void control_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	control_Overloading(signal, value, ctx);
+	control_Conveyor(signal, value, ctx);
+	control_Stars(signal, value, ctx);
+	control_Oil(signal, value, ctx);
+	control_Hydratation(signal, value, ctx);
+	control_Organ(signal, value, ctx);
 }
 
-void control_all() {
-	control_Overloading();
-	control_Conveyor();
-	control_Stars();
-	control_Oil();
-	control_Hydratation();
-	control_Organ();
-}
-
-void stop_all() {
-	inProgress[ALL] = 0;
-	stop_Overloading();
-	stop_Conveyor();
-	stop_Stars();
-	stop_Oil();
-	stop_Hydratation();
-	stop_Organ();
+void stop_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	context->in_progress[ALL] = 0;
+	stop_Overloading(signal, value, ctx);
+	stop_Conveyor(signal, value, ctx);
+	stop_Stars(signal, value, ctx);
+	stop_Oil(signal, value, ctx);
+	stop_Hydratation(signal, value, ctx);
+	stop_Organ(signal, value, ctx);
 }
