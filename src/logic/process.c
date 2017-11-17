@@ -132,6 +132,7 @@ void start_Overloading(struct signal_s *signal, int value, struct execution_cont
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_reloader", 1);
 	post_write_command(ctx, "dev.485.rpdu485.kbl.reloader_green", 1);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.reloader_green", 1);
 
 	post_update_command(ctx, "dev.panel10.system_state_code",20);
 	process_sirens_timeout(5, &context->in_progress[OVERLOADING], ctx);
@@ -163,8 +164,9 @@ void start_Conveyor(struct signal_s *signal, int value, struct execution_context
 	printf("Starting conveyor\n");
 	context->in_progress[CONVEYOR] = STARTING;
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
-	post_write_command(ctx, "dev.485.rpdu485.kbl.conveyor_green", 1);
 	post_write_command(ctx, "dev.485.kb.kbl.start_conveyor", 1);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.conveyor_green", 1);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.conveyor_green", 1);
 
 	post_update_command(ctx, "dev.panel10.system_state_code",16);
 	process_sirens_timeout(5, &context->in_progress[CONVEYOR], ctx);
@@ -197,8 +199,9 @@ void start_Stars(struct signal_s *signal, int reverse, struct execution_context_
 	CHECK(STARS);
 	printf("Starting stars%s\n", reverse ? " reverse" : "");
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
-	post_write_command(ctx, "dev.485.rpdu485.kbl.loader_green", 1);
 	post_write_command(ctx, "dev.485.kb.kbl.start_stars", 1);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.loader_green", 1);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.loader_green", 1);
 
 	post_update_command(ctx, "dev.panel10.system_state_code",40);
 	process_sirens_timeout(5, &context->in_progress[STARS], ctx);
@@ -222,8 +225,9 @@ void start_Oil(struct signal_s *signal, int value, struct execution_context_s *c
 	if(context->in_progress[OIL]) return;
 	printf("Starting oil station\n");
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
-	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 1);
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 1);
+	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 1);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 1);
 	context->in_progress[OIL] = STARTING;
 
 	post_update_command(ctx, "dev.panel10.system_state_code",14);
@@ -329,6 +333,7 @@ void start_Organ(struct signal_s *signal, int value, struct execution_context_s 
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_exec_dev", 1);
 	post_write_command(ctx, "dev.485.rpdu485.kbl.exec_dev_green", 1);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.exec_dev_green", 1);
 
 
 	post_update_command(ctx, "dev.panel10.system_state_code",12);
@@ -460,6 +465,7 @@ void stop_Overloading(struct signal_s *signal, int value, struct execution_conte
 	printf("Stopping overloading\n");
 	context->in_progress[OVERLOADING] = 0;
 	post_write_command(ctx, "dev.485.rpdu485.kbl.reloader_green", 0);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.reloader_green", 0);
 	post_write_command(ctx, "dev.485.kb.kbl.start_reloader", 0);
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka5_1", 0);	
 	post_update_command(ctx, "dev.panel10.kb.key.reloader",0);
@@ -471,6 +477,7 @@ void stop_Conveyor(struct signal_s *signal, int value, struct execution_context_
 	printf("Stopping conveyor\n");
 	context->in_progress[CONVEYOR] = 0;
 	post_write_command(ctx, "dev.485.rpdu485.kbl.conveyor_green", 0);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.conveyor_green", 0);
 	post_write_command(ctx, "dev.485.kb.kbl.start_conveyor", 0);
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka3_1", 0);
 	post_update_command(ctx, "dev.panel10.kb.key.conveyor",0);
@@ -482,6 +489,7 @@ void stop_Stars(struct signal_s *signal, int value, struct execution_context_s *
 	printf("Stopping stars\n");
 	context->in_progress[STARS] = 0;
 	post_write_command(ctx, "dev.485.rpdu485.kbl.loader_green", 0);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.loader_green", 0);
 	post_write_command(ctx, "dev.485.kb.kbl.start_stars", 0);
 	post_write_command(ctx, "dev.485.rsrs.rm_u2_on6", 0);
 	post_write_command(ctx, "dev.485.rsrs.rm_u2_on7", 0);
@@ -500,6 +508,7 @@ void stop_Oil(struct signal_s *signal, int value, struct execution_context_s *ct
 	context->in_progress[OIL] = 0;
 	printf("Stopping oil station\n");
 	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 0);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 0);
 	printf("Stopping oil station\n");
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 0);
 	printf("Stopping oil station\n");
@@ -529,6 +538,7 @@ void stop_Organ(struct signal_s *signal, int value, struct execution_context_s *
 	context->in_progress[ORGAN] = 0;
 	printf("Stopping organ\n");
 	post_write_command(ctx, "dev.485.rpdu485.kbl.exec_dev_green", 0);
+	post_write_command(ctx, "dev.485.rpdu485c.kbl.exec_dev_green", 0);
 	post_write_command(ctx, "dev.485.kb.kbl.start_exec_dev", 0);
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka1_1", 0);
 	post_update_command(ctx, "dev.panel10.kb.key.exec_dev",0);

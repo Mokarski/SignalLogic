@@ -30,9 +30,11 @@ void process_register_common(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.sound_alarm", &process_sirenes);
 	processor_add(ctx, "dev.485.kb.pukonv485c.beep",  &process_sirenes);
 	processor_add(ctx, "dev.485.rpdu485.kei.sound_beepl", &process_sirenes);
+	processor_add(ctx, "dev.485.rpdu485c.kei.sound_beepl", &process_sirenes);
 
 	processor_add(ctx, "dev.485.kb.kei1.stop_alarm", &process_urgent_stop);
 	processor_add(ctx, "dev.485.rpdu485.kei.crit_stop", &process_urgent_stop);
+	processor_add(ctx, "dev.485.rpdu485c.kei.crit_stop", &process_urgent_stop);
 	processor_add(ctx, "dev.485.kb.pukonv485c.stop_alarm", &process_urgent_stop);
 }
 

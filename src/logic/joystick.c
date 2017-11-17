@@ -28,6 +28,10 @@ static void process_register_conv(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_down", &process_joystick_conv);
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_right", &process_joystick_conv);
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_conv_up", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_conv_left", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_conv_down", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_conv_right", &process_joystick_conv);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_conv_up", &process_joystick_conv);
 }
 
 static void process_register_move(struct execution_context_s *ctx) {
@@ -39,6 +43,10 @@ static void process_register_move(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_back", &process_joystick_move);
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_left", &process_joystick_move);
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_right", &process_joystick_move);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_forward", &process_joystick_move);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_back", &process_joystick_move);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_left", &process_joystick_move);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_right", &process_joystick_move);
 }
 
 static void process_register_execdev(struct execution_context_s *ctx) {
@@ -50,6 +58,10 @@ static void process_register_execdev(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_exec_dev_down", &process_joystick_execdev);
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_exec_dev_right", &process_joystick_execdev);
 	processor_add(ctx, "dev.485.rpdu485.kei.joy_exec_dev_up", &process_joystick_execdev);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_exec_dev_left", &process_joystick_execdev);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_exec_dev_down", &process_joystick_execdev);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_exec_dev_right", &process_joystick_execdev);
+	processor_add(ctx, "dev.485.rpdu485c.kei.joy_exec_dev_up", &process_joystick_execdev);
 }
 
 static void process_register_telescope(struct execution_context_s *ctx) {
@@ -57,6 +69,8 @@ static void process_register_telescope(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.telescope_down", &process_joystick_telescope);
 	processor_add(ctx, "dev.485.rpdu485.kei.telescope_up", &process_joystick_telescope);
 	processor_add(ctx, "dev.485.rpdu485.kei.telescope_down", &process_joystick_telescope);
+	processor_add(ctx, "dev.485.rpdu485c.kei.telescope_up", &process_joystick_telescope);
+	processor_add(ctx, "dev.485.rpdu485c.kei.telescope_down", &process_joystick_telescope);
 }
 
 static void process_register_support(struct execution_context_s *ctx) {
@@ -64,6 +78,8 @@ static void process_register_support(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.combain_support_up", &process_joystick_support);
 	processor_add(ctx, "dev.485.rpdu485.kei.support_down", &process_joystick_support);
 	processor_add(ctx, "dev.485.rpdu485.kei.support_up", &process_joystick_support);
+	processor_add(ctx, "dev.485.rpdu485c.kei.support_down", &process_joystick_support);
+	processor_add(ctx, "dev.485.rpdu485c.kei.support_up", &process_joystick_support);
 }
 
 static void process_register_feeder(struct execution_context_s *ctx) {
@@ -71,11 +87,14 @@ static void process_register_feeder(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.sourcer_up", &process_joystick_feeder);
 	processor_add(ctx, "dev.485.rpdu485.kei.sourcer_down", &process_joystick_feeder);
 	processor_add(ctx, "dev.485.rpdu485.kei.sourcer_up", &process_joystick_feeder);
+	processor_add(ctx, "dev.485.rpdu485c.kei.sourcer_down", &process_joystick_feeder);
+	processor_add(ctx, "dev.485.rpdu485c.kei.sourcer_up", &process_joystick_feeder);
 }
 
 void process_joystick_register(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.acceleration", &process_joystick_accel);
 	processor_add(ctx, "dev.485.rpdu485.kei.acceleration_up", &process_joystick_accel);
+	processor_add(ctx, "dev.485.rpdu485c.kei.acceleration_up", &process_joystick_accel);
 
 	process_register_conv(ctx);
 	process_register_move(ctx);
@@ -125,6 +144,19 @@ void process_joystick_conv(struct signal_s *signal, int value, struct execution_
 			change_direction = MOVE_RIGHT;
 		}
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_conv_up")) {
+			change_direction = MOVE_UP;
+		}
+	} else if(control_mode(ctx) & LISTEN_CABLE) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_conv_left")) {
+			change_direction = MOVE_LEFT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_conv_down")) {
+			change_direction = MOVE_DOWN;
+		}
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_conv_right")) {
+			change_direction = MOVE_RIGHT;
+		}
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_conv_up")) {
 			change_direction = MOVE_UP;
 		}
 	}
@@ -199,6 +231,22 @@ void process_joystick_move_change(struct signal_s *signal, int value, struct exe
 			jright = signal_get(ctx, "dev.485.rpdu485.kei.joy_back");
 			jup = signal_get(ctx, "dev.485.rpdu485.kei.joy_left");
 			jdown = signal_get(ctx, "dev.485.rpdu485.kei.joy_right");
+
+			if(jup) {
+				left_move = (jright << J_BIT_UP) | (!jleft << J_BIT_UP);
+				right_move = (jleft << J_BIT_UP) | (!jright << J_BIT_UP);
+			} else if(jdown) {
+				left_move = (jright << J_BIT_DOWN) | (!jleft << J_BIT_DOWN);
+				right_move = (jleft << J_BIT_DOWN) | (!jright << J_BIT_DOWN);
+			} else {
+				left_move = jright << J_BIT_UP | jleft << J_BIT_DOWN;
+				right_move = jright << J_BIT_DOWN | jleft << J_BIT_UP;
+			}
+		} else if(control_mode(ctx) & LISTEN_CABLE) {
+			jleft = signal_get(ctx, "dev.485.rpdu485c.kei.joy_forward");
+			jright = signal_get(ctx, "dev.485.rpdu485c.kei.joy_back");
+			jup = signal_get(ctx, "dev.485.rpdu485c.kei.joy_left");
+			jdown = signal_get(ctx, "dev.485.rpdu485c.kei.joy_right");
 
 			if(jup) {
 				left_move = (jright << J_BIT_UP) | (!jleft << J_BIT_UP);
@@ -306,6 +354,15 @@ void process_joystick_execdev(struct signal_s *signal, int value, struct executi
 			change_direction = MOVE_RIGHT;
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.joy_exec_dev_up"))
 			change_direction = MOVE_UP;
+	} else if(control_mode(ctx) & LISTEN_CABLE) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_exec_dev_left"))
+			change_direction = MOVE_LEFT;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_exec_dev_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_exec_dev_right"))
+			change_direction = MOVE_RIGHT;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.joy_exec_dev_up"))
+			change_direction = MOVE_UP;
 	}
 
 	switch(change_direction) {
@@ -341,6 +398,11 @@ void process_joystick_telescope(struct signal_s *signal, int value, struct execu
 			change_direction = MOVE_DOWN;
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.telescope_up"))
 			change_direction = MOVE_UP;
+	} else if(control_mode(ctx) & LISTEN_CABLE) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.telescope_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.telescope_up"))
+			change_direction = MOVE_UP;
 	}
 
 	switch(change_direction) {
@@ -368,6 +430,11 @@ void process_joystick_support(struct signal_s *signal, int value, struct executi
 			change_direction = MOVE_DOWN;
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.support_up"))
 			change_direction = MOVE_UP;
+	} else if(control_mode(ctx) & LISTEN_CABLE) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.support_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.support_up"))
+			change_direction = MOVE_UP;
 	}
 
 	switch(change_direction) {
@@ -391,6 +458,9 @@ void process_joystick_accel(struct signal_s *signal, int value, struct execution
 	} else if(control_mode(ctx) & LISTEN_RPDU) {
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.acceleration_up"))
 			change_direction = MOVE_UP;
+	} else if(control_mode(ctx) & LISTEN_CABLE) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.acceleration_up"))
+			change_direction = MOVE_UP;
 	}
 
 	switch(change_direction) {
@@ -410,6 +480,11 @@ void process_joystick_feeder(struct signal_s *signal, int value, struct executio
 			change_direction = MOVE_UP;
 	} else if(control_mode(ctx) & LISTEN_RPDU) {
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.sourcer_down"))
+			change_direction = MOVE_DOWN;
+		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.sourcer_up"))
+			change_direction = MOVE_UP;
+	} else if(control_mode(ctx) & LISTEN_CABLE) {
+		if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.sourcer_down"))
 			change_direction = MOVE_DOWN;
 		if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.sourcer_up"))
 			change_direction = MOVE_UP;
