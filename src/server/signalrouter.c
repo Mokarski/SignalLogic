@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
   ctx.event_socket = event[1];
   ctx.signals = signals;
   ctx.events = NULL;
+  ctx.events_head = NULL;
   ctx.hash = hash;
   bzero(ctx.sockets, sizeof(ctx.sockets));
   bzero(ctx.subscriptions, sizeof(ctx.subscriptions));

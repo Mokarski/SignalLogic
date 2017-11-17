@@ -76,8 +76,12 @@ void process_command_update(struct execution_context_s *context, struct cmd_entr
     e->e_type = SUB_UPDATE;
     e->e_signal = signals[i];
     e->e_value = value;
-    e->e_next = context->events;
-    context->events = e;
+    e->e_next = NULL;
+		if(context->events_head)
+			context->events_head->e_next = e;
+		if(!context->events)
+			context->events = e;
+		context->events_head = e;
     signals[i]->s_value = value;
   }
 }
@@ -111,8 +115,12 @@ void process_command_write(struct execution_context_s *context, struct cmd_entry
     e->e_type   = SUB_WRITE;
     e->e_signal = signals[i];
     e->e_value  = value; // Old value
-    e->e_next   = context->events;
-    context->events = e;
+    e->e_next   = NULL;
+		if(context->events_head)
+			context->events_head->e_next = e;
+		if(!context->events)
+			context->events = e;
+		context->events_head = e;
   }
 }
 

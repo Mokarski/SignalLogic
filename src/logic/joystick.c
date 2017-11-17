@@ -12,20 +12,23 @@
 #define LISTEN_CABLE	0x8
 #define LISTEN_MAIN		(LISTEN_LOCAL | LISTEN_RPDU | LISTEN_CABLE)
 
-#define CONTROL_MASK		0x3
-#define CONTROL_RADIO		0x1
-#define	CONTROL_MANU		0x2
-#define CONTROL_CABLE		0x3
+#define CONTROL_MASK	0x3
+#define CONTROL_RADIO	0x1
+#define	CONTROL_MANU	0x2
+#define CONTROL_CABLE	0x3
 
-#define MODE_MASK				(0x03 << 2)
-#define MODE_DIAG				(0x01 << 2)
-#define MODE_PUMP				(0x02 << 2)
-#define MODE_NORM				(0x03 << 2)
+#define MODE_MASK			(0x03 << 2)
+#define MODE_DIAG			(0x01 << 2)
+#define MODE_PUMP			(0x02 << 2)
+#define MODE_NORM			(0x03 << 2)
 
 #define MOVE_UP				0x1
 #define MOVE_DOWN			0x2
 #define MOVE_LEFT			0x4
 #define MOVE_RIGHT		0x8
+
+#define J_BIT_UP 			0
+#define J_BIT_DOWN  	1
 
 static int control_mode = LISTEN_LOCAL;
 static void process_mode_switch(struct signal_s *signal, int value, struct execution_context_s *ctx);
@@ -93,6 +96,7 @@ void process_joystick_register(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.kb.kei1.mode2", &process_mode_switch);
 	processor_add(ctx, "dev.485.kb.kei1.control1", &process_mode_switch);
 	processor_add(ctx, "dev.485.kb.kei1.control2", &process_mode_switch);
+	processor_add(ctx, "dev.485.kb.kei1.post_conveyor", &process_mode_switch);
 	processor_add(ctx, "dev.485.kb.kei1.acceleration", &process_joystick_accel);
 	processor_add(ctx, "dev.485.rpdu485.kei.acceleration_up", &process_joystick_accel);
 
@@ -103,11 +107,6 @@ void process_joystick_register(struct execution_context_s *ctx) {
 	process_register_support(ctx);
 	process_register_telescope(ctx);
 }
-
-#define MOVE_UP				0x1
-#define MOVE_DOWN			0x2
-#define MOVE_LEFT			0x4
-#define MOVE_RIGHT		0x8
 
 void process_joystick_conv(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	int change_direction = 0;
@@ -155,18 +154,34 @@ void process_joystick_conv(struct signal_s *signal, int value, struct execution_
 
 	switch(change_direction) {
 	case MOVE_UP:
+		if(value) {
+			write_command(ctx, "dev.485.rsrs.rm_u2_on3", !value);
+			update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", !value);
+		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on2", value);
 		update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", value);
 		break;
 	case MOVE_DOWN:
+		if(value) {
+			write_command(ctx, "dev.485.rsrs.rm_u2_on2", !value);
+			update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", !value);
+		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on3", value);
 		update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", value);
 		break;
 	case MOVE_LEFT:
+		if(value) {
+			write_command(ctx, "dev.485.rsrs.rm_u2_on4", !value);
+			update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", !value);
+		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on5", value);
 		update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", value);
 		break;
 	case MOVE_RIGHT:
+		if(value) {
+			write_command(ctx, "dev.485.rsrs.rm_u2_on5", !value);
+			update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", !value);
+		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on4", value);
 		update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", value);
 		break;
@@ -178,8 +193,6 @@ void process_joystick_move_change(struct signal_s *signal, int value, struct exe
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	struct timespec now;
 	int left_move = 0, right_move = 0;
-#define J_BIT_UP 		0
-#define J_BIT_DOWN  1
 
 	printf("Processing truck joystick(s)\n");
 	if(context->is_moving) {

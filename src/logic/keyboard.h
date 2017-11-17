@@ -17,8 +17,8 @@ void process_register_common(struct execution_context_s *ctx);
 void process_urgent_stop(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void process_sirenes(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
-int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what);
-void Process_Timeout();
+//int Wait_For_Feedback(char *name, int expect, int timeout, volatile int *what);
+//void Process_Timeout();
 int  Get_Signal(char *name);
 void Init_Worker();
 void Worker_Set_Mode(int mode);

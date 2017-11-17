@@ -56,7 +56,6 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
 	get_and_subscribe(ctx, "dev", SUB_UPDATE);
 	hash_create(&context->proc_hash);
   ctx->clientstate = context;
-	Init_Worker();
 	process_loop();
 	process_joystick_register(ctx);
   printf("Client initialized\n");
@@ -66,6 +65,6 @@ void client_thread_proc(struct execution_context_s *ctx) {
   printf("Started proc thread\n");
 	initDevices();
   while(ctx->running) {
-		Worker(NULL);
+		abort();
   }
 }

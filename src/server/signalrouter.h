@@ -24,6 +24,7 @@ struct execution_context_s {
   int sockets[MAX_CONN];
   int current_client;
   struct event_s *events;
+  struct event_s *events_head;
   struct subscription_list_s subscriptions[MAX_CONN];
   struct hash_s *subscription_by_signal;
 };

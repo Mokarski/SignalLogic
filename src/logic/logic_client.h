@@ -23,6 +23,7 @@ struct logic_context_s {
 	volatile int 	  oil_station_running;
 	volatile int 		control_mode;
 	volatile int 		function_mode;
+	volatile int 		stars;
 	int    					event_socket[2];
 };
 

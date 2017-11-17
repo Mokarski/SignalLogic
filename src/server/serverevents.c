@@ -56,6 +56,8 @@ int process_events(struct execution_context_s *ctx) {
     free(event);
   }
 
+	ctx->events_head = NULL;
+
   for(i = 0; i < MAX_CONN; i ++) {
     if(buffer[i]) {
       packet_send_command((void*)buffer[i], ctx->sockets[i], ctx, &process_command, NULL);
