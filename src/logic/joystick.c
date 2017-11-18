@@ -320,7 +320,9 @@ void process_joystick_move(struct signal_s *signal, int value, struct execution_
 		signal_get(ctx, "dev.485.kb.kei1.left_truck_back") || signal_get(ctx, "dev.485.kb.kei1.left_truck_forward") ||
 		signal_get(ctx, "dev.485.kb.kei1.right_truck_back") || signal_get(ctx, "dev.485.kb.kei1.right_truck_forward") ||
 		signal_get(ctx, "dev.485.rpdu485.kei.joy_forward") || signal_get(ctx, "dev.485.rpdu485.kei.joy_back") ||
-		signal_get(ctx, "dev.485.rpdu485.kei.joy_left") || signal_get(ctx, "dev.485.rpdu485.kei.joy_right");
+		signal_get(ctx, "dev.485.rpdu485.kei.joy_left") || signal_get(ctx, "dev.485.rpdu485.kei.joy_right") ||
+		signal_get(ctx, "dev.485.rpdu485c.kei.joy_forward") || signal_get(ctx, "dev.485.rpdu485c.kei.joy_back") ||
+		signal_get(ctx, "dev.485.rpdu485c.kei.joy_left") || signal_get(ctx, "dev.485.rpdu485c.kei.joy_right");
 
 	if(is_moving) {
 		context->is_moving = is_moving;
