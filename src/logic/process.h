@@ -1,6 +1,7 @@
 #pragma once
 #include <common/signal.h>
 #include <client/client.h>
+#include <logic/processor.h>
 
 #define IDLE				0
 #define STARTING		1
@@ -14,6 +15,14 @@
 #define ORGAN				5
 #define PUMPING			6
 #define ALL					7
+
+void process_gauge_register(struct execution_context_s *ctx);
+void Pressure_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void Oil_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void Water_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void Exec_Dev_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void Metan_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);
+void Voltage_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
 void start_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void start_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx);

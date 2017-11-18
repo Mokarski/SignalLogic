@@ -116,10 +116,6 @@ int init(struct signal_s *signal, int value, struct execution_context_s *ctx){
 		return 0;
 	}
 
-  Pressure_Show();
-	Oil_Show();
-	Metan_Show();
-	Voltage_Show();
 	printf("Initialization completed!\n");
 	return 1;
 }

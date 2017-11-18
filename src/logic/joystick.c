@@ -165,34 +165,34 @@ void process_joystick_conv(struct signal_s *signal, int value, struct execution_
 	case MOVE_UP:
 		if(value) {
 			write_command(ctx, "dev.485.rsrs.rm_u2_on3", !value);
-			update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", !value);
+			post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", !value);
 		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on2", value);
-		update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", value);
 		break;
 	case MOVE_DOWN:
 		if(value) {
 			write_command(ctx, "dev.485.rsrs.rm_u2_on2", !value);
-			update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", !value);
+			post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_up", !value);
 		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on3", value);
-		update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_down", value);
 		break;
 	case MOVE_LEFT:
 		if(value) {
 			write_command(ctx, "dev.485.rsrs.rm_u2_on4", !value);
-			update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", !value);
+			post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", !value);
 		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on5", value);
-		update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", value);
 		break;
 	case MOVE_RIGHT:
 		if(value) {
 			write_command(ctx, "dev.485.rsrs.rm_u2_on5", !value);
-			update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", !value);
+			post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_left", !value);
 		}
 		write_command(ctx, "dev.485.rsrs.rm_u2_on4", value);
-		update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.conveyor_right", value);
 		break;
 	}
 }
@@ -262,35 +262,35 @@ void process_joystick_move_change(struct signal_s *signal, int value, struct exe
 
 		if(left_move & (1 << J_BIT_UP)) {
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 0);
-			post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_back", 0);
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 1);
-			post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 1);
+			post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_forward", 1);
 		} else if(left_move & (1 << J_BIT_DOWN)) {
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 0);
-			post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_forward", 0);
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 1);
-			post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 1);
+			post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_back", 1);
 		} else {
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 0);
-			post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_forward", 0);
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 0);
-			post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_back", 0);
 		}
 		if(right_move & (1 << J_BIT_UP)) {
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 0);
-			post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_back", 0);
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 1);
-			post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 1);
+			post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_forward", 1);
 		} else if(right_move & (1 << J_BIT_DOWN)) {
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 0);
-			post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_forward", 0);
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 1);
-			post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 1);
+			post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_back", 1);
 		} else {
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 0);
-			post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_forward", 0);
 			post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 0);
-			post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 0);
+			post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_back", 0);
 		}
 		if(!left_move && !right_move) {
 			clock_gettime(CLOCK_REALTIME, (struct timespec*)&context->last_move);
@@ -301,13 +301,13 @@ void process_joystick_move_change(struct signal_s *signal, int value, struct exe
 		if(context->trucks_started)
 			clock_gettime(CLOCK_REALTIME, (struct timespec*)&context->last_move);
 		post_write_command(ctx, "dev.485.rsrs.rm_u2_on10", 0);
-		post_write_command(ctx, "panel10.kb.kei2.left_truck_forward", 0);
+		post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_forward", 0);
 		post_write_command(ctx, "dev.485.rsrs.rm_u2_on11", 0);
-		post_write_command(ctx, "panel10.kb.kei2.left_truck_back", 0);
+		post_update_command(ctx, "dev.panel10.kb.kei2.left_truck_back", 0);
 		post_write_command(ctx, "dev.485.rsrs.rm_u2_on0", 0);
-		post_write_command(ctx, "panel10.kb.kei2.right_truck_forward", 0);
+		post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_forward", 0);
 		post_write_command(ctx, "dev.485.rsrs.rm_u2_on1", 0);
-		post_write_command(ctx, "panel10.kb.kei2.right_truck_back", 0);
+		post_update_command(ctx, "dev.panel10.kb.kei2.right_truck_back", 0);
 		context->trucks_started = 0;
 	}
 }
@@ -368,19 +368,19 @@ void process_joystick_execdev(struct signal_s *signal, int value, struct executi
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on6", value);
-		update_command(ctx, "dev.panel10.kb.kei3.exec_dev_up", value);
+		post_update_command(ctx, "dev.panel10.kb.kei3.exec_dev_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on7", value);
-		update_command(ctx, "dev.panel10.kb.kei2.exec_dev_down", value);
+		post_update_command(ctx, "dev.panel10.kb.kei2.exec_dev_down", value);
 		break;
 	case MOVE_LEFT:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on3", value);
-		update_command(ctx, "dev.panel10.kb.kei2.exec_dev_left", value);
+		post_update_command(ctx, "dev.panel10.kb.kei2.exec_dev_left", value);
 		break;
 	case MOVE_RIGHT:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on2", value);
-		update_command(ctx, "dev.panel10.kb.kei2.exec_dev_right", value);
+		post_update_command(ctx, "dev.panel10.kb.kei2.exec_dev_right", value);
 		break;
 	}
 }
@@ -408,11 +408,11 @@ void process_joystick_telescope(struct signal_s *signal, int value, struct execu
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on4", value);
-		update_command(ctx, "dev.panel10.kb.kei2.telescope_up", value);
+		post_update_command(ctx, "dev.panel10.kb.kei2.telescope_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on5", value);
-		update_command(ctx, "dev.panel10.kb.kei2.telescope_down", value);
+		post_update_command(ctx, "dev.panel10.kb.kei3.telescope_down", value);
 		break;
 	}
 }
@@ -440,11 +440,11 @@ void process_joystick_support(struct signal_s *signal, int value, struct executi
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on8", value);
-		update_command(ctx, "dev.panel10.kb.kei2.combain_support_up", value);
+		post_update_command(ctx, "dev.panel10.kb.kei2.combain_support_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u2_on9", value);
-		update_command(ctx, "dev.panel10.kb.kei1.combain_support_down", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.combain_support_down", value);
 		break;
 	}
 }
@@ -493,11 +493,11 @@ void process_joystick_feeder(struct signal_s *signal, int value, struct executio
 	switch(change_direction) {
 	case MOVE_UP:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on8", value);
-		update_command(ctx, "dev.panel10.kb.kei1.sourcer_up", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.sourcer_up", value);
 		break;
 	case MOVE_DOWN:
 		write_command(ctx, "dev.485.rsrs.rm_u1_on9", value);
-		update_command(ctx, "dev.panel10.kb.kei1.sourcer_down", value);
+		post_update_command(ctx, "dev.panel10.kb.kei1.sourcer_down", value);
 		break;
 	}
 

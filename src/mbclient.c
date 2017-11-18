@@ -170,7 +170,7 @@ int modbus_signal_updated(struct mb_device_list_s *ctx, struct signal_s *signal)
 	int mbid = signal->s_register.dr_device.d_mb_id;
 	int reg = signal->s_register.dr_addr;
 
-	if(strstr(signal->s_name,  "dev.485.rpdu485") != NULL)
+	if(strstr(signal->s_name,  "dev.485.ad") != NULL)
 		printf("Posting update %s : %d; register: %d; bit %d\n", signal->s_name, signal->s_value, ctx->device[mbid].reg[reg].value, signal->s_register.dr_bit);
 
 	post_update_command(ctx->mb_context, signal->s_name, signal->s_value);

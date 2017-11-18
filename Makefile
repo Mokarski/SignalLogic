@@ -20,7 +20,7 @@ signalrouter: $(COMMON) src/server/signalrouter.c src/server/servercommand.c src
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ $(LDFLAGS_ARM)
 
 client_virtual: $(COMMON) src/client/client.c src/client/clientcommand.c src/virtualclient.c src/common/ringbuffer.c src/client/signalhelper.c
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client_modbus: $(COMMON) src/client/client.c src/client/clientcommand.c src/mbclient.c src/mbdev.c src/common/ringbuffer.c src/client/signalhelper.c
 	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)

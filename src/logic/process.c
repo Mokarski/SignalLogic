@@ -28,55 +28,84 @@ int waitForFeedback(struct execution_context_s *ctx, char *name, int timeout, vo
 	return oc;
 }
 
-void Pressure_Show() {
-	int H1= Get_Signal("dev.485.ad2.adc1_phys_value");
-	int H2= Get_Signal("dev.485.ad2.adc2_phys_value");
-	int H3= Get_Signal("dev.485.ad2.adc3_phys_value");
-	int H4= Get_Signal("dev.485.ad2.adc4_phys_value");
-	int H5= Get_Signal("dev.485.ad3.adc1_phys_value");
-	if (H1 >0) H1 = (H1/40);
-	if (H2 >0) H2 = (H2/40);
-	if (H3 >0) H3 = (H3/25);
-	if (H4 >0) H4 = (H4/40);
-	if (H5 >0) H5 = (H5/40);
-	WRITE_SIGNAL("dev.panel10.system_pressure1",H1);
-	WRITE_SIGNAL("dev.panel10.system_pressure2",H2);
-	WRITE_SIGNAL("dev.panel10.system_pressure3",H3);
-	WRITE_SIGNAL("dev.panel10.system_pressure4",H4);
-	WRITE_SIGNAL("dev.panel10.system_pressure5",H5);
+void process_gauge_register(struct execution_context_s *ctx) {
+	processor_add(ctx, "dev.485.ad2.adc1_phys_value", &Pressure_Show);
+	processor_add(ctx, "dev.485.ad2.adc2_phys_value", &Pressure_Show);
+	processor_add(ctx, "dev.485.ad2.adc3_phys_value", &Pressure_Show);
+	processor_add(ctx, "dev.485.ad2.adc4_phys_value", &Pressure_Show);
+	processor_add(ctx, "dev.485.ad3.adc1_phys_value", &Pressure_Show);
+
+	processor_add(ctx, "dev.485.ad1.adc1_phys_value", &Oil_Show);
+	processor_add(ctx, "dev.485.ad1.adc2_phys_value", &Oil_Show);
+
+	processor_add(ctx, "dev.485.ad1.adc3_phys_value", &Water_Show);
+	processor_add(ctx, "dev.485.ad1.adc4_phys_value", &Water_Show);
+
+	processor_add(ctx, "dev.wago.oc_mui2.current_m1a", &Exec_Dev_Show);
+	processor_add(ctx, "dev.wago.oc_mui2.current_m1b", &Exec_Dev_Show);
+	processor_add(ctx, "dev.wago.oc_mui2.current_m1c", &Exec_Dev_Show);
+
+	processor_add(ctx, "dev.485.ad3.adc3_phys_value", &Metan_Show);
+	processor_add(ctx, "dev.wago.oc_mui1.Uin_PhaseA", &Voltage_Show);
+
+  Pressure_Show(NULL, 0, ctx);
+  Oil_Show(NULL, 0, ctx);
+  Water_Show(NULL, 0, ctx);
+  Voltage_Show(NULL, 0, ctx);
+  Exec_Dev_Show(NULL, 0, ctx);
 }
 
-void Oil_Show(){
-	//READ_SIGNAL ("485.ad1.adc1_phys_value");
-	//READ_SIGNAL ("485.ad1.adc2_phys_value");
-	int Oil_level =Get_Signal ("485.ad1.adc1_phys_value");
-	int Oil_temp  =Get_Signal ("485.ad1.adc2_phys_value");
+void Pressure_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	printf("Showing system pressure\n");
+  if(signal) signal->s_value = value;
+
+	int H1 = signal_get(ctx, "dev.485.ad2.adc1_phys_value");
+	int H2 = signal_get(ctx, "dev.485.ad2.adc2_phys_value");
+	int H3 = signal_get(ctx, "dev.485.ad2.adc3_phys_value");
+	int H4 = signal_get(ctx, "dev.485.ad2.adc4_phys_value");
+	int H5 = signal_get(ctx, "dev.485.ad3.adc1_phys_value");
+
+	if(H1 > 0) H1 = (H1/40);
+	if(H2 > 0) H2 = (H2/40);
+	if(H3 > 0) H3 = (H3/25);
+	if(H4 > 0) H4 = (H4/40);
+	if(H5 > 0) H5 = (H5/40);
+
+	post_update_command(ctx, "dev.panel10.system_pressure1", H1);
+	post_update_command(ctx, "dev.panel10.system_pressure2", H2);
+	post_update_command(ctx, "dev.panel10.system_pressure3", H3);
+	post_update_command(ctx, "dev.panel10.system_pressure4", H4);
+	post_update_command(ctx, "dev.panel10.system_pressure5", H5);
+	printf("Posting panel gauges updates\n");
+	post_process(ctx);
+}
+
+void Oil_Show(struct signal_s *signal, int value, struct execution_context_s *ctx){
+  if(signal) signal->s_value = value;
+	int Oil_level = signal_get(ctx, "dev.485.ad1.adc1_phys_value");
+	int Oil_temp  = signal_get(ctx, "dev.485.ad1.adc2_phys_value");
 	if (Oil_level >0) Oil_level=Oil_level/10;
 	if (Oil_temp >0) Oil_temp=Oil_temp/10;
-	WRITE_SIGNAL("dev.panel10.system_oil_level",Oil_level);
-	WRITE_SIGNAL("dev.panel10.system_oil_temp",Oil_temp);
+	post_update_command(ctx, "dev.panel10.system_oil_level",Oil_level);
+	post_update_command(ctx, "dev.panel10.system_oil_temp",Oil_temp);
 }
 
-void Water_Show() {
-	//READ_SIGNAL("485.ad1.adc3_phys_value");
-	//READ_SIGNAL("485.ad1.adc4_phys_value");
-	int water_flow = Get_Signal("dev.485.ad1.adc3_phys_value");
-	int water_pressure = Get_Signal("dev.485.ad1.adc4_phys_value");
+void Water_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+  if(signal) signal->s_value = value;
+	int water_flow =  signal_get(ctx, "dev.485.ad1.adc3_phys_value");
+	int water_pressure =  signal_get(ctx, "dev.485.ad1.adc4_phys_value");
 	if (water_pressure > 0) water_pressure=(water_pressure/25);
 	if (water_flow > 0) water_flow= (water_flow/4);
-	WRITE_SIGNAL("dev.panel10.system_water_flow",water_flow);
-	WRITE_SIGNAL("dev.panel10.system_water_pressure",water_pressure);
+	post_update_command(ctx, "dev.panel10.system_water_flow",water_flow);
+	post_update_command(ctx, "dev.panel10.system_water_pressure",water_pressure);
 }
 
 
-void Exec_Dev_Show() {
-	//READ_SIGNAL("wago.oc_mui2.current_m1a");
-	//READ_SIGNAL("wago.oc_mui2.current_m1b");
-	//READ_SIGNAL("wago.oc_mui2.current_m1c");
-
-	int m1_Ia = Get_Signal("dev.wago.oc_mui2.current_m1a");
-	int m1_Ib = Get_Signal("dev.wago.oc_mui2.current_m1b");
-	int m1_Ic = Get_Signal("dev.wago.oc_mui2.current_m1c");
+void Exec_Dev_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+  if(signal) signal->s_value = value;
+	int m1_Ia = signal_get(ctx, "dev.wago.oc_mui2.current_m1a");
+	int m1_Ib = signal_get(ctx, "dev.wago.oc_mui2.current_m1b");
+	int m1_Ic = signal_get(ctx, "dev.wago.oc_mui2.current_m1c");
 	int I_all=0;
 
 //	int Volt = Get_Signal("dev.wago.oc_mui1.Uin_PhaseA");
@@ -86,25 +115,19 @@ void Exec_Dev_Show() {
 	   }
 	int P_m1=(I_all*100)/150;	
 	int rot=35;
-	WRITE_SIGNAL("dev.panel10.system_execdev_load", P_m1);
-	WRITE_SIGNAL("dev.panel10.system_execdev_rotation",rot);
+	post_update_command(ctx, "dev.panel10.system_execdev_load", P_m1);
+	post_update_command(ctx, "dev.panel10.system_execdev_rotation",rot);
 }
 
-void Metan_Show() {
+void Metan_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 
 	//READ_SIGNAL("485.ad3.adc3_phys_value");
+  if(signal) signal->s_value = value;
 	int Metan = Get_Signal("dev.485.ad3.adc3_phys_value");
 	if (Metan > 0) Metan =1;
-	WRITE_SIGNAL ("panel10.system_metan",Metan);
+	post_update_command(ctx, "dev.panel10.system_metan",Metan);
 }
 
-void Radio_Mode (int n) {
-	WRITE_SIGNAL("dev.panel10.system_radio",n);
-}
-
-void Mestno_Mode (int n) {
-	WRITE_SIGNAL("dev.panel10.system_mestno",n);
-}
 void System_Mode(int n) {
 	WRITE_SIGNAL("dev.panel10.system_mode",n);
 }
@@ -119,9 +142,10 @@ void Pultk_Mode(){
 	int puk = Get_Signal("dev.485.kb.kei1.post_conveyor");
 	WRITE_SIGNAL("dev.panel10.system_pultk",puk);
 }
-void Voltage_Show() {
+void Voltage_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+  if(signal) signal->s_value = value;
 	int Volt = Get_Signal("dev.wago.oc_mui1.Uin_PhaseA");
-	WRITE_SIGNAL("dev.panel10.system_voltage",Volt);
+	post_update_command(ctx, "dev.panel10.system_voltage",Volt);
 }
 
 void start_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -203,7 +227,7 @@ void start_Stars(struct signal_s *signal, int reverse, struct execution_context_
 	post_write_command(ctx, "dev.485.rpdu485.kbl.loader_green", 1);
 	post_write_command(ctx, "dev.485.rpdu485c.kbl.loader_green", 1);
 
-	post_update_command(ctx, "dev.panel10.system_state_code",40);
+	post_update_command(ctx, "dev.panel10.system_state_code", 40);
 	process_sirens_timeout(5, &context->in_progress[STARS], ctx);
 
 	CHECK(STARS);
@@ -230,7 +254,7 @@ void start_Oil(struct signal_s *signal, int value, struct execution_context_s *c
 	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 1);
 	context->in_progress[OIL] = STARTING;
 
-	post_update_command(ctx, "dev.panel10.system_state_code",14);
+	post_update_command(ctx, "dev.panel10.system_state_code", 14);
 	process_sirens_timeout(5, &context->in_progress[OIL], ctx);
 	CHECK(OIL);
 
@@ -243,8 +267,8 @@ void start_Oil(struct signal_s *signal, int value, struct execution_context_s *c
 	CHECK(OIL);
 
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka2_1", 1);
-	post_update_command(ctx, "dev.panel10.system_state_code",4);
-	post_update_command(ctx, "panel10.kb.key.oil_station",1);
+	post_update_command(ctx, "dev.panel10.system_state_code", 4);
+	post_update_command(ctx, "dev.panel10.kb.key.oil_station", 1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k2", 3, &context->in_progress[OIL])) {
 		printf("Feedback error, stopping oil station\n");
 		stop_Oil(signal, value, ctx);
