@@ -227,10 +227,10 @@ void process_joystick_move_change(struct signal_s *signal, int value, struct exe
 			left_move = (signal_get(ctx, "dev.485.kb.kei1.left_truck_back")   << J_BIT_DOWN) | (signal_get(ctx, "dev.485.kb.kei1.left_truck_forward")  << J_BIT_UP);
 			right_move = (signal_get(ctx, "dev.485.kb.kei1.right_truck_back") << J_BIT_DOWN) | (signal_get(ctx, "dev.485.kb.kei1.right_truck_forward") << J_BIT_UP);
 		} else if(control_mode(ctx) & LISTEN_RPDU) {
-			jleft = signal_get(ctx, "dev.485.rpdu485.kei.joy_forward");
-			jright = signal_get(ctx, "dev.485.rpdu485.kei.joy_back");
-			jup = signal_get(ctx, "dev.485.rpdu485.kei.joy_left");
-			jdown = signal_get(ctx, "dev.485.rpdu485.kei.joy_right");
+			jleft = signal_get(ctx, "dev.485.rpdu485.kei.joy_left");
+			jright = signal_get(ctx, "dev.485.rpdu485.kei.joy_right");
+			jup = signal_get(ctx, "dev.485.rpdu485.kei.joy_forward");
+			jdown = signal_get(ctx, "dev.485.rpdu485.kei.joy_back");
 
 			if(jup) {
 				left_move = (jright << J_BIT_UP) | (!jleft << J_BIT_UP);
@@ -243,10 +243,10 @@ void process_joystick_move_change(struct signal_s *signal, int value, struct exe
 				right_move = jright << J_BIT_DOWN | jleft << J_BIT_UP;
 			}
 		} else if(control_mode(ctx) & LISTEN_CABLE) {
-			jleft = signal_get(ctx, "dev.485.rpdu485c.kei.joy_forward");
-			jright = signal_get(ctx, "dev.485.rpdu485c.kei.joy_back");
-			jup = signal_get(ctx, "dev.485.rpdu485c.kei.joy_left");
-			jdown = signal_get(ctx, "dev.485.rpdu485c.kei.joy_right");
+			jleft = signal_get(ctx, "dev.485.rpdu485c.kei.joy_left");
+			jright = signal_get(ctx, "dev.485.rpdu485c.kei.joy_right");
+			jup = signal_get(ctx, "dev.485.rpdu485c.kei.joy_forward");
+			jdown = signal_get(ctx, "dev.485.rpdu485c.kei.joy_back");
 
 			if(jup) {
 				left_move = (jright << J_BIT_UP) | (!jleft << J_BIT_UP);
