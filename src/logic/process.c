@@ -56,7 +56,6 @@ void process_gauge_register(struct execution_context_s *ctx) {
 }
 
 void Pressure_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	printf("Showing system pressure\n");
   if(signal) signal->s_value = value;
 
 	int H1 = signal_get(ctx, "dev.485.ad2.adc1_phys_value");
@@ -76,18 +75,18 @@ void Pressure_Show(struct signal_s *signal, int value, struct execution_context_
 	post_update_command(ctx, "dev.panel10.system_pressure3", H3);
 	post_update_command(ctx, "dev.panel10.system_pressure4", H4);
 	post_update_command(ctx, "dev.panel10.system_pressure5", H5);
-	printf("Posting panel gauges updates\n");
 	post_process(ctx);
 }
 
 void Oil_Show(struct signal_s *signal, int value, struct execution_context_s *ctx){
-  if(signal) signal->s_value = value;
-	int Oil_level = signal_get(ctx, "dev.485.ad1.adc1_phys_value");
-	int Oil_temp  = signal_get(ctx, "dev.485.ad1.adc2_phys_value");
-	if (Oil_level >0) Oil_level=Oil_level/10;
-	if (Oil_temp >0) Oil_temp=Oil_temp/10;
-	post_update_command(ctx, "dev.panel10.system_oil_level",Oil_level);
-	post_update_command(ctx, "dev.panel10.system_oil_temp",Oil_temp);
+  if(signal)
+    signal->s_value = value;
+
+	int Oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
+	int Oil_temp  = adc_to_hr(ctx, "dev.conf.logic.oil.temp", signal_get(ctx, "dev.485.ad1.adc2_phys_value"));
+
+	post_update_command(ctx, "dev.panel10.system_oil_level", Oil_level);
+	post_update_command(ctx, "dev.panel10.system_oil_temp", Oil_temp);
 }
 
 void Water_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -426,11 +425,18 @@ void control_Oil(struct signal_s *signal, int value, struct execution_context_s 
 	if(!context->in_progress[OIL]) return;
 	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m2");
 	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m2");
+	int oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
+	int oil_level_min = signal_get(ctx, "dev.conf.logic.oil.level.min");
 
 	if(tempRelay) {
 		printf("Oil station temp relay error!\n");
 		stop_Oil(signal, value, ctx);
 	}
+
+  if(oil_level <= oil_level_min) {
+		printf("Oil station: oil level low!\n");
+    stop_Oil(signal, value, ctx);
+  }
 }
 
 void control_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -468,9 +474,19 @@ void control_Pumping(struct signal_s *signal, int value, struct execution_contex
 	if(!context->in_progress[PUMPING]) return;
 	int temp = signal_get(ctx, "wago.oc_temp.pt100_m7");
 	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m7");
+	int oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
+	int oil_level_max = signal_get(ctx, "dev.conf.logic.oil.level.max");
 
 	if(tempRelay) {
 		printf("Pumping temp relay error!\n");
+		stop_Pumping(signal, value, ctx);
+	}
+
+  printf("Current oil level: %d; max oil level: %d\n", oil_level, oil_level_max);
+
+  int level_state = check_limits(ctx,  "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
+	if(level_state == LIMIT_MAX_CRIT) {
+		printf("Pumping: oil level high!\n");
 		stop_Pumping(signal, value, ctx);
 	}
 }
@@ -610,6 +626,7 @@ void control_all(struct signal_s *signal, int value, struct execution_context_s 
 	control_Oil(signal, value, ctx);
 	control_Hydratation(signal, value, ctx);
 	control_Organ(signal, value, ctx);
+	control_Pumping(signal, value, ctx);
 }
 
 void stop_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
