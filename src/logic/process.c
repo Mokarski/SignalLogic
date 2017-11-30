@@ -557,6 +557,7 @@ void stop_Oil(struct signal_s *signal, int value, struct execution_context_s *ct
 	printf("Stopping oil station\n");
 	context->in_progress[OIL] = 0;
   stop_check_limits(ctx, "dev.conf.logic.oil.level");
+  stop_check_limits(ctx, "dev.conf.logic.oil.temp");
 	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 0);
 	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 0);
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 0);
