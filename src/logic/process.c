@@ -433,10 +433,21 @@ void control_Oil(struct signal_s *signal, int value, struct execution_context_s 
 		stop_Oil(signal, value, ctx);
 	}
 
-  if(oil_level <= oil_level_min) {
+  int level_state = check_limits(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
+	if(level_state == LIMIT_MIN_CRIT) {
 		printf("Oil station: oil level low!\n");
-    stop_Oil(signal, value, ctx);
-  }
+		stop_Oil(signal, value, ctx);
+	}
+
+  level_state = check_limits(ctx, "dev.conf.logic.oil.temp", signal_get(ctx, "dev.485.ad1.adc2_phys_value"));
+	if(level_state == LIMIT_MIN_CRIT) {
+		printf("Oil station: oil temp low!\n");
+		stop_Oil(signal, value, ctx);
+	}
+	else if(level_state == LIMIT_MAX_CRIT) {
+		printf("Oil station: oil temp high!\n");
+		stop_Oil(signal, value, ctx);
+	}
 }
 
 void control_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -482,9 +493,7 @@ void control_Pumping(struct signal_s *signal, int value, struct execution_contex
 		stop_Pumping(signal, value, ctx);
 	}
 
-  printf("Current oil level: %d; max oil level: %d\n", oil_level, oil_level_max);
-
-  int level_state = check_limits(ctx,  "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
+  int level_state = check_limits(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
 	if(level_state == LIMIT_MAX_CRIT) {
 		printf("Pumping: oil level high!\n");
 		stop_Pumping(signal, value, ctx);
@@ -495,6 +504,7 @@ void stop_Pumping(struct signal_s *signal, int value, struct execution_context_s
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	printf("Stopping pumping\n");
 	context->in_progress[PUMPING] = 0;
+  stop_check_limits(ctx, "dev.conf.logic.oil.level");
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_pump", 0);
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka6_1", 0);	
 }
@@ -546,14 +556,11 @@ void stop_Oil(struct signal_s *signal, int value, struct execution_context_s *ct
 	//if(!context->in_progress[OIL]) return;
 	printf("Stopping oil station\n");
 	context->in_progress[OIL] = 0;
-	printf("Stopping oil station\n");
+  stop_check_limits(ctx, "dev.conf.logic.oil.level");
 	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 0);
 	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 0);
-	printf("Stopping oil station\n");
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 0);
-	printf("Stopping oil station\n");
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka2_1", 0);
-	printf("Stopping oil station\n");
 
 	post_update_command(ctx, "dev.panel10.kb.key.oil_station",0);
 	printf("Oil station stopped\n");
@@ -620,13 +627,13 @@ void stop_Hydraulics(struct signal_s *signal, int value, struct execution_contex
 
 void control_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
-	control_Overloading(signal, value, ctx);
-	control_Conveyor(signal, value, ctx);
-	control_Stars(signal, value, ctx);
-	control_Oil(signal, value, ctx);
-	control_Hydratation(signal, value, ctx);
-	control_Organ(signal, value, ctx);
-	control_Pumping(signal, value, ctx);
+  control_Overloading(signal, value, ctx);
+  control_Conveyor(signal, value, ctx);
+  control_Stars(signal, value, ctx);
+  control_Oil(signal, value, ctx);
+  control_Hydratation(signal, value, ctx);
+  control_Organ(signal, value, ctx);
+  control_Pumping(signal, value, ctx);
 }
 
 void stop_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {

@@ -57,6 +57,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   printf("Initializing virtual client\n");
 	struct logic_context_s *context = malloc(sizeof(struct logic_context_s));
 	memset(context, 0, sizeof(struct logic_context_s));
+  pthread_mutex_init(&context->limits_mutex, NULL);
 	ring_buffer_init(&context->command_buffer);
   socketpair(AF_LOCAL, SOCK_STREAM, 0, context->event_socket);
 	g_Ctx = ctx;
@@ -75,9 +76,6 @@ void client_thread_proc(struct execution_context_s *ctx) {
   struct timeval t0;
   fd_set socks;
 
-  t0.tv_sec = 0;
-  t0.tv_usec = 200000;
-
   printf("Stopping all\n");
 	stop_all(NULL, 0, ctx);
 	stop_Pumping(NULL, 0, ctx);
@@ -93,9 +91,10 @@ void client_thread_proc(struct execution_context_s *ctx) {
     FD_ZERO(&socks);
     FD_SET(context->event_socket[0], &socks);
 
-    struct limit_s *c = context->limits;
+    t0.tv_sec = 0;
+    t0.tv_usec = 100000;
 
-    while(c) {
+    if(context->limits) {
       control_all(NULL, 0, ctx);
     }
 

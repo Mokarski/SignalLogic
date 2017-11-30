@@ -24,7 +24,7 @@
 
 int main(int argc, char **argv) {
   FILE *s = fopen("signals.cfg", "r");
-  char line[128];
+  char line[128], *ptr;
   char name[128], *prefix;
   int i = 0, cnt = 0, found, running = 1;
   struct signal_s *signals = NULL, *current;
@@ -35,6 +35,10 @@ int main(int argc, char **argv) {
 
   while(!feof(s)) {
     if(fgets(line, sizeof(line), s)) {
+      ptr = line;
+      while(*ptr == ' ' || *ptr == '\t') ++ ptr;
+      if(!*ptr || strchr("#\r\n", *ptr)) // == '#' || *ptr == '\0' || *ptr == '\r' || *ptr == '\n')
+        continue;
       cnt ++;
       current = malloc(sizeof(struct signal_s));
       str_to_signal(line, current);
@@ -111,7 +115,7 @@ int main(int argc, char **argv) {
   printf("Accepting connections\n");
   while(running) {
     char *evbuf = "w";
-    int sc;
+    int sc = sizeof(addr);
     int client_sock = accept(listening, (struct sockaddr*)&addr, &sc);
 
     if(client_sock < 0) {

@@ -150,22 +150,9 @@ int hr_to_adc(struct execution_context_s *ctx, char const *name, int value) {
 
 int check_limits(struct execution_context_s *ctx, char *name, int value) {
   struct logic_context_s *lc = (struct logic_context_s*)ctx->clientstate;
-  struct limit_s *limit = hash_find_first(lc->limits_hash, name);
   int state = LIMIT_NORM, t_react = 0;
 	struct timespec now;
   int tflash = 5000;
-
-  if(!limit) {
-    printf("Creating limit for %s\n", name);
-    limit = malloc(sizeof(struct limit_s));
-    limit->state = 0;
-    limit->level = 0;
-    clock_gettime(CLOCK_REALTIME, &limit->start);
-    limit->next = lc->limits;
-    strcpy(limit->name, name);
-    hash_add(lc->limits_hash, name, limit);
-    lc->limits = limit;
-  }
 
   char treact_name[64] = "";
   char min_name[64] = "";
@@ -212,7 +199,20 @@ int check_limits(struct execution_context_s *ctx, char *name, int value) {
     state = LIMIT_MAX_WARN;
   }
 
-  printf("Current state: %d\n", state);
+  pthread_mutex_lock(&lc->limits_mutex);
+  struct limit_s *limit = hash_find_first(lc->limits_hash, name);
+
+  if(!limit) {
+    printf("Creating limit for %s\n", name);
+    limit = malloc(sizeof(struct limit_s));
+    limit->state = 0;
+    limit->level = 0;
+    clock_gettime(CLOCK_REALTIME, &limit->start);
+    limit->next = lc->limits;
+    strcpy(limit->name, name);
+    hash_add(lc->limits_hash, name, limit);
+    lc->limits = limit;
+  }
 
   limit->level = value;
 
@@ -229,13 +229,11 @@ int check_limits(struct execution_context_s *ctx, char *name, int value) {
     int diff_sec = now.tv_sec - limit->start.tv_sec;
     int diff_nsec = now.tv_nsec - limit->start.tv_nsec;
     int diff_msec = diff_sec * 1000 + (diff_nsec / 1000000);
-    printf("TReact: %d; current time: %d\n", treact, diff_msec);
 
     if(diff_msec < treact) {
       printf("Skip limit due to reaction time\n");
       state = LIMIT_NORM;
     } else {
-      printf("Applying limit\n");
       if((state == LIMIT_MIN_WARN || state == LIMIT_MAX_WARN) && ((diff_msec - treact) < tflash)) {
         // Enable fhash
         post_write_command(ctx, "dev.485.rsrs2.state_sound1_led", 1);
@@ -246,5 +244,28 @@ int check_limits(struct execution_context_s *ctx, char *name, int value) {
       }
     }
   }
+  pthread_mutex_unlock(&lc->limits_mutex);
   return state;
+}
+
+int stop_check_limits(struct execution_context_s *ctx, char *name) {
+  struct logic_context_s *lc = (struct logic_context_s*)ctx->clientstate;
+
+  pthread_mutex_lock(&lc->limits_mutex);
+
+  struct limit_s **limit = &lc->limits;
+  struct limit_s *c = *limit;
+
+  while(c) {
+    if(!strcmp(c->name, name)) {
+      *limit = c->next;
+      hash_remove_one(lc->limits_hash, name, c);
+      free(c);
+      pthread_mutex_unlock(&lc->limits_mutex);
+      return;
+    }
+    limit = &c->next;
+    c = *limit;
+  }
+  pthread_mutex_unlock(&lc->limits_mutex);
 }

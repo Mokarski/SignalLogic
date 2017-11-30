@@ -46,6 +46,7 @@ struct logic_context_s {
 	int    					event_socket[2];
   struct limit_s *limits;
 	struct hash_s  *limits_hash;
+  pthread_mutex_t limits_mutex;
 };
 
 int  is_oil_station_started(struct execution_context_s *ctx);
@@ -55,3 +56,4 @@ void post_command(logic_command_t, struct signal_s *signal, int value, struct ex
 int  adc_to_hr(struct execution_context_s *ctx, char const *name, int value);
 int  hr_to_adc(struct execution_context_s *ctx, char const *name, int value);
 int  check_limits(struct execution_context_s *ctx, char *name, int value);
+int  stop_check_limits(struct execution_context_s *ctx, char *name);
