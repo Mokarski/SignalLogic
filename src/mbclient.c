@@ -34,6 +34,8 @@ int modbus_read(struct mb_device_list_s *ctx, int mbid, int max_regs) {
   uint16_t regs[MAX_REG];
   int i;
 
+  usleep(100);
+
   if(mb_ctx != NULL) {
     modbus_set_slave(mb_ctx, mbid);
     int connected = modbus_connect(mb_ctx);
@@ -163,7 +165,7 @@ void *create_mb_context() {
 }
 
 int modbus_signal_error(struct mb_device_list_s *ctx, struct signal_s *signal, int error) {
-	printf("Error signal %s\n", signal->s_name);
+	if(error) printf("Error signal %s\n", signal->s_name);
 }
 
 int modbus_signal_updated(struct mb_device_list_s *ctx, struct signal_s *signal) {

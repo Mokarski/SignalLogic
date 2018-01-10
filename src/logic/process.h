@@ -32,6 +32,7 @@ void start_Hydratation(struct signal_s *signal, int value, struct execution_cont
 void start_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void start_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx);
 
+int control_motor(struct execution_context_s *ctx, const char *prefix, const char *config_prefix, const char *name);
 void control_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void control_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx);
 void control_Stars(struct signal_s *signal, int value, struct execution_context_s *ctx);

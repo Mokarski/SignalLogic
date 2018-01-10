@@ -253,15 +253,13 @@ void start_Oil(struct signal_s *signal, int value, struct execution_context_s *c
 	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 1);
 	context->in_progress[OIL] = STARTING;
 
+	control_Oil(signal, value, ctx); // Check temp
+	CHECK(OIL);
+
 	post_update_command(ctx, "dev.panel10.system_state_code", 14);
 	process_sirens_timeout(5, &context->in_progress[OIL], ctx);
 	CHECK(OIL);
 
-	int bki = signal_get(ctx, "dev.wago.bki_k2.M2");
-	if(bki) {
-		printf("BKI error!\n");
-		stop_Oil(signal, value, ctx);
-	}
 	control_Oil(signal, value, ctx); // Check temp
 	CHECK(OIL);
 
@@ -353,6 +351,9 @@ void start_Organ(struct signal_s *signal, int value, struct execution_context_s 
 	printf("Starting organ\n");
 	context->in_progress[ORGAN] = STARTING;
 
+	control_Organ(signal, value, ctx); // Check temp
+	CHECK(ORGAN);
+
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_exec_dev", 1);
 	post_write_command(ctx, "dev.485.rpdu485.kbl.exec_dev_green", 1);
@@ -384,6 +385,72 @@ void start_Organ(struct signal_s *signal, int value, struct execution_context_s 
 	control_Organ(signal, value, ctx);
 }
 
+int control_motor(struct execution_context_s *ctx, const char *prefix, const char *config_prefix, const char *name) {
+  char signal_name[64];
+  const char *wago_config[] = {
+    ".thermal_relay", ".nominal_current", ".start_current",
+    ".start_time", ".overload_time", ".overturn_time", ".temp", NULL
+  };
+  int i, value;
+
+  if(signal_get(ctx, "dev.wago.config.voltage") == 0) {
+    printf("Updating WAGO voltage\n");
+    post_write_command(ctx, "dev.wago.config.voltage", signal_get(ctx, "dev.conf.wago.voltage"));
+  }
+
+  strcpy(signal_name, prefix);
+  strcat(signal_name, ".error.all");
+
+  int is_enabled = signal_get(ctx, name);
+  int error_map = signal_get(ctx, signal_name);
+
+  if(is_enabled && error_map) {
+    printf("%s is enabled and error map is %d\n", prefix, error_map);
+    return error_map;
+  }
+
+#define NO_CONFIG   1
+  if(error_map & NO_CONFIG) {
+    printf("Uploading config for %s\n", prefix);
+    for(i = 0; wago_config[i] != NULL; i ++) {
+      strcpy(signal_name, config_prefix);
+      strcat(signal_name, wago_config[i]);
+      value = signal_get(ctx, signal_name);
+
+      if(i != 0 && value == 0) {
+        printf("Config %s is 0\n", signal_name);
+        return error_map;
+      }
+
+      strcpy(signal_name, prefix);
+      strcat(signal_name, wago_config[i]);
+      printf("Setting %s to %d\n", signal_name, value);
+      post_write_command(ctx, signal_name, value);
+    }
+
+    strcpy(signal_name, prefix);
+    strcat(signal_name, ".ready");
+    post_write_command(ctx, signal_name, 0);
+    printf("Updating %s\n", signal_name);
+    post_process(ctx);
+
+    i = 0;
+    printf("Waiting for config processed\n");
+    while(signal_get(ctx, signal_name) == 0 && ++ i < 100) {
+      usleep(10000);
+    }
+
+    if(signal_get(ctx, signal_name) == 0) {
+      printf("Config can't be processed\n");
+      return error_map;
+    }
+  }
+
+  strcpy(signal_name, prefix);
+  strcat(signal_name, ".error.all");
+
+  return signal_get(ctx, signal_name);
+}
 
 void control_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
@@ -428,6 +495,12 @@ void control_Oil(struct signal_s *signal, int value, struct execution_context_s 
 	int oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
 	int oil_level_min = signal_get(ctx, "dev.conf.logic.oil.level.min");
 
+  int error = control_motor(ctx, "dev.wago.config.m2", "dev.conf.wago.oil", "dev.wago.oc_mdo1.ka2_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor1.error", error);
+    stop_Oil(signal, value, ctx);
+  }
+
 	if(tempRelay) {
 		printf("Oil station temp relay error!\n");
 		stop_Oil(signal, value, ctx);
@@ -470,6 +543,12 @@ void control_Organ(struct signal_s *signal, int value, struct execution_context_
 	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m1");
 	int waterFlow = signal_get(ctx, "dev.485.ad1.adc3.flow");
 	//READ_SIGNAL("485.ad1.adc3.flow");
+
+  int error = control_motor(ctx, "dev.wago.config.m1", "dev.conf.wago.drill", "dev.wago.oc_mdo1.ka1_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor1.error", error);
+    stop_Organ(signal, value, ctx);
+  }
 
 	if(waterFlow) {
 	}

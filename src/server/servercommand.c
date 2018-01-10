@@ -14,9 +14,11 @@
 #include "common/hash.h"
 #include "servercommand.h"
 
+#define SIGNAL_NUM  1024
+
 void process_command_read(struct execution_context_s *context, struct cmd_entry_s *command,
                           struct response_packet_header_s *h, struct response_entry_s *r, size_t bufsize) {
-  struct signal_s *signals[512];
+  struct signal_s *signals[SIGNAL_NUM];
   char signal_name[128] = {0};
   int i, snum;
   struct response_signal_description_s *desc;
@@ -48,7 +50,7 @@ void process_command_read(struct execution_context_s *context, struct cmd_entry_
 
 void process_command_update(struct execution_context_s *context, struct cmd_entry_s *command,
                             struct response_packet_header_s *h, struct response_entry_s *r, size_t bufsize) {
-  struct signal_s *signals[512];
+  struct signal_s *signals[SIGNAL_NUM];
   char signal_name[128] = {0};
   int i, snum;
   struct response_signal_description_s *desc;
@@ -88,7 +90,7 @@ void process_command_update(struct execution_context_s *context, struct cmd_entr
 
 void process_command_write(struct execution_context_s *context, struct cmd_entry_s *command,
                            struct response_packet_header_s *h, struct response_entry_s *r, size_t bufsize) {
-  struct signal_s *signals[512];
+  struct signal_s *signals[SIGNAL_NUM];
   char signal_name[512] = {0};
   int i, snum;
   struct response_signal_description_s *desc;
@@ -126,7 +128,7 @@ void process_command_write(struct execution_context_s *context, struct cmd_entry
 
 void process_command_subscribe(struct execution_context_s *context, struct cmd_entry_s *command,
                                struct response_packet_header_s *h, struct response_entry_s *r, size_t bufsize) {
-  struct signal_s *signals[512];
+  struct signal_s *signals[SIGNAL_NUM];
   char signal_name[512] = {0};
   int i, snum;
   struct response_signal_description_s *desc;
@@ -158,7 +160,7 @@ void process_command_subscribe(struct execution_context_s *context, struct cmd_e
 
 void process_command_unsubscribe(struct execution_context_s *context, struct cmd_entry_s *command,
                                  struct response_packet_header_s *h, struct response_entry_s *r, size_t bufsize) {
-  struct signal_s *signals[512];
+  struct signal_s *signals[SIGNAL_NUM];
   char signal_name[512] = {0};
   int i, snum;
   struct response_signal_description_s *desc;
@@ -202,7 +204,7 @@ void process_command(int socket, struct cmd_packet_header_s *hdr, void *context)
   int n = 0;
   int size = ntohs(hdr->cph_size);
   struct response_packet_header_s *response;
-  char response_buffer[20480];
+  char response_buffer[1024 * 32];
   struct response_entry_s entry;
 
   response = response_create_packet(response_buffer);

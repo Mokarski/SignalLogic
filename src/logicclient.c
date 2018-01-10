@@ -39,6 +39,7 @@ void event_update_signal(struct signal_s *signal, int value, struct execution_co
 		signal->s_value = value;
 		context->initialized = init(signal, value, ctx);
 		if(context->initialized) {
+      printf("Processor: WAGO initialized\n");
 			process_joystick_register(ctx);
 			process_register_common(ctx);
 			process_local_post_register(ctx);

@@ -84,6 +84,8 @@ void process_local_post_register(struct execution_context_s *ctx) {
 
 	processor_add(ctx, "dev.485.rpdu485.connect", &process_rpdu_state);
 	processor_add(ctx, "dev.485.rpdu485c.connect", &process_rpduc_state);
+
+  process_mode_switch(NULL, 0, ctx);
 }
 
 static void process_rpdu_state(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -96,7 +98,7 @@ static void process_rpdu_state(struct signal_s *signal, int value, struct execut
 		post_write_command(ctx, "dev.485.rpdu485.kbl.exec_dev_green", context->in_progress[ORGAN] != 0);
 	}
 	post_update_command(ctx, "dev.panel10.system_radio", value);
-  process_mode_switch(signal, value, ctx);
+  //process_mode_switch(signal, value, ctx);
 
   // Disconnected - listen from local post
   if(!value && (control_mode(ctx) & LISTEN_RPDU)) {
@@ -114,7 +116,7 @@ static void process_rpduc_state(struct signal_s *signal, int value, struct execu
 		post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", context->in_progress[OIL] != 0);
 		post_write_command(ctx, "dev.485.rpdu485c.kbl.exec_dev_green", context->in_progress[ORGAN] != 0);
 	}
-  process_mode_switch(signal, value, ctx);
+  //process_mode_switch(signal, value, ctx);
 
   // Disconnected - listen from local post
   if(!value && (control_mode(ctx) & LISTEN_CABLE)) {
@@ -235,12 +237,14 @@ void process_local_stop_loading(struct signal_s *signal, int value, struct execu
 
 void process_local_oil_station(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
-	printf("Processing oil station\n");
+	printf("Processing oil station (%d)\n", value);
 	if(!value || function_mode(ctx) == MODE_PUMP) return;
 	if(!strcmp(signal->s_name, "dev.485.kb.key.start_oil_station")) {
 		if(control_mode(ctx) & LISTEN_LOCAL) {
+      printf("Posting start oil station\n");
 			post_command(&start_Oil, signal, value, ctx);
 		}
+    else printf("Wrong control mode\n");
 		return;
 	} else if(!strcmp(signal->s_name, "dev.485.rpdu485.kei.oil_station_up")) {
 		printf("Checking control mode\n");
@@ -248,6 +252,7 @@ void process_local_oil_station(struct signal_s *signal, int value, struct execut
 			printf("Posting command\n");
 			post_command(&start_Oil, signal, value, ctx);
 		}
+    else printf("Wrong control mode\n");
 		return;
 	} else if(!strcmp(signal->s_name, "dev.485.rpdu485c.kei.oil_station_up")) {
 		printf("Checking control mode\n");
@@ -255,6 +260,7 @@ void process_local_oil_station(struct signal_s *signal, int value, struct execut
 			printf("Posting command\n");
 			post_command(&start_Oil, signal, value, ctx);
 		}
+    else printf("Wrong control mode\n");
 		return;
 	}
 
@@ -388,7 +394,7 @@ void process_local_all(struct signal_s *signal, int value, struct execution_cont
 
 static void process_mode_switch(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
-	signal->s_value = value;
+	if(signal) signal->s_value = value;
 	int mode1 = signal_get(ctx, "dev.485.kb.kei1.mode1");
 	int mode2 = signal_get(ctx, "dev.485.kb.kei1.mode2");
 	int control1 = signal_get(ctx, "dev.485.kb.kei1.control1");
@@ -397,9 +403,9 @@ static void process_mode_switch(struct signal_s *signal, int value, struct execu
 	int state = control1 | (control2 << 1) | (mode1 << 2) | (mode2 << 3);
 
 	if((state & MODE_MASK) != context->function_mode) {
-		stop_all(signal, value, ctx);
-		stop_Pumping(signal, value, ctx);
-		stop_Hydraulics(signal, value, ctx);
+		if(signal) stop_all(signal, value, ctx);
+		if(signal) stop_Pumping(signal, value, ctx);
+		if(signal) stop_Hydraulics(signal, value, ctx);
 		context->function_mode = state & MODE_MASK;
 	}
 

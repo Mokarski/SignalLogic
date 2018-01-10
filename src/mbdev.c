@@ -165,7 +165,8 @@ int mb_dev_update(struct mb_device_list_s *dlist) {
 
     if(dlist->device[i].mb_reg_max > 0) {
 			int last_error_state = dlist->device[i].mb_last_state;
-			dlist->device[i].mb_last_state = dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
+      int last_state = dlist->mb_read_device(dlist, i, dlist->device[i].mb_reg_max);
+			dlist->device[i].mb_last_state = last_state;
 			for(j = 0; dlist->mb_signal_updated && (j < dlist->device[i].mb_reg_max); j ++) {
 				list = dlist->device[i].reg[j].signals;
 				while(list) {

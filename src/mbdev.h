@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include "common/signal.h"
 
-#define MAX_REG 50
+#define MAX_REG 100
 #define MAX_DEVS 256
 
 // List of signals attached to a register

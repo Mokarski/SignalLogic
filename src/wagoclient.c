@@ -141,6 +141,7 @@ void client_thread_proc(struct execution_context_s *ctx) {
   while(ctx->running) {
     struct signal_s *s;
 		int i = 0;
+    printf("Updating all devices\n");
     mb_dev_update(ctx->clientstate);
     s = ctx->signals;
     while(s) {
@@ -151,6 +152,7 @@ void client_thread_proc(struct execution_context_s *ctx) {
       }
       s = s->next;
     }
+    printf("Posting process\n");
     post_process(ctx);
   }
 }
