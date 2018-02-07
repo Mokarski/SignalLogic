@@ -62,6 +62,7 @@ int modbus_write(struct mb_device_list_s *ctx, int mbid, int reg, int value) {
     modbus_set_slave(mb_ctx, mbid);
 
 		uint16_t registers[1] = { value };
+    printf("Writing value %d to register %d\n", value, reg);
 		int rc = modbus_write_registers(mb_ctx, reg, 1, registers); //write in device by register
 
     modbus_flush(mb_ctx);

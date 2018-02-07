@@ -10,6 +10,8 @@ echo  $LD_LIBRARY_PATH
 
 ./signalrouter >/dev/null  2>&1&
 sleep 2
+./client_config 127.0.0.1 >/dev/null 2>&1&
+sleep 1
 ./client_modbus 127.0.0.1 >/dev/null 2>&1&
 sleep 1
 ./client_wago 127.0.0.1 >/dev/null 2>&1&

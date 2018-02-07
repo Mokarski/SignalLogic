@@ -38,13 +38,13 @@ void process_command_read(struct execution_context_s *context, struct cmd_entry_
     }
 
     desc = r->re_signal_desc;
-    desc->rsd_value     = signals[i]->s_value;
-    desc->rsd_rw        = signals[i]->s_rw;
-    desc->rsd_reg_type  = signals[i]->s_register.dr_type;
-    desc->rsd_reg_addr  = signals[i]->s_register.dr_addr;
-    desc->rsd_reg_bit   = signals[i]->s_register.dr_bit;
-    desc->rsd_dev_type  = signals[i]->s_register.dr_device.d_type;
-    desc->rsd_dev_mb_id = signals[i]->s_register.dr_device.d_mb_id;
+    desc->rsd_value     = htons(signals[i]->s_value);
+    desc->rsd_rw        = htons(signals[i]->s_rw);
+    desc->rsd_reg_type  = htons(signals[i]->s_register.dr_type);
+    desc->rsd_reg_addr  = htons(signals[i]->s_register.dr_addr);
+    desc->rsd_reg_bit   = htons(signals[i]->s_register.dr_bit);
+    desc->rsd_dev_type  = htons(signals[i]->s_register.dr_device.d_type);
+    desc->rsd_dev_mb_id = htons(signals[i]->s_register.dr_device.d_mb_id);
   }
 }
 
@@ -204,7 +204,7 @@ void process_command(int socket, struct cmd_packet_header_s *hdr, void *context)
   int n = 0;
   int size = ntohs(hdr->cph_size);
   struct response_packet_header_s *response;
-  char response_buffer[1024 * 32];
+  char response_buffer[1024 * 64];
   struct response_entry_s entry;
 
   response = response_create_packet(response_buffer);

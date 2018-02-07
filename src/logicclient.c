@@ -23,6 +23,7 @@
 #include "client/client.h"
 #include "logic/logic_client.h"
 #include "logic/processor.h"
+#include "logic/config.h"
 
 void event_update_signal(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
@@ -68,6 +69,7 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
   context->limits = 0;
   ctx->clientstate = context;
 	process_local_post_switch_register(ctx);
+  process_config_register(ctx);
   printf("Client initialized\n");
 	context->initialized = init(NULL, 0, ctx);
 }
@@ -108,7 +110,6 @@ void client_thread_proc(struct execution_context_s *ctx) {
       read(context->event_socket[0], localbuf, sizeof(localbuf));
     }
 
-		//printf("Processing posted commands in proc thread\n");
     while(ring_buffer_size(context->command_buffer) > 0) {
 			struct logic_command_s *command = ring_buffer_get(context->command_buffer);
       ring_buffer_pop(context->command_buffer);

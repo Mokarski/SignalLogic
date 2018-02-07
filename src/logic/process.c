@@ -152,6 +152,10 @@ void start_Overloading(struct signal_s *signal, int value, struct execution_cont
 	if(context->in_progress[OVERLOADING]) return;
 	context->in_progress[OVERLOADING] = STARTING;
 	printf("Starting overloading\n");
+
+	control_Overloading(signal, value, ctx); // Check temp
+	CHECK(OVERLOADING);
+
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_reloader", 1);
 	post_write_command(ctx, "dev.485.rpdu485.kbl.reloader_green", 1);
@@ -173,7 +177,7 @@ void start_Overloading(struct signal_s *signal, int value, struct execution_cont
 //	post_write_command(ctx, "dev.panel10.system_state_code",20);
 	post_update_command(ctx, "dev.panel10.kb.key.reloader",1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k5", 3, &context->in_progress[OVERLOADING])) {
-		stop_Overloading(signal, value, ctx);
+    control_Overloading(signal, value, ctx); // Check temp
 		return;
 	}
 
@@ -186,6 +190,10 @@ void start_Conveyor(struct signal_s *signal, int value, struct execution_context
 	if(context->in_progress[CONVEYOR]) return;
 	printf("Starting conveyor\n");
 	context->in_progress[CONVEYOR] = STARTING;
+
+	control_Conveyor(signal, value, ctx); // Check temp
+	CHECK(CONVEYOR);
+
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_conveyor", 1);
 	post_write_command(ctx, "dev.485.rpdu485.kbl.conveyor_green", 1);
@@ -206,7 +214,7 @@ void start_Conveyor(struct signal_s *signal, int value, struct execution_context
 	post_update_command(ctx, "dev.panel10.system_state_code",2);
 	post_update_command(ctx, "dev.panel10.kb.key.conveyor",1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k3", 3, &context->in_progress[CONVEYOR])) {
-		stop_Conveyor(signal, value, ctx);
+    control_Conveyor(signal, value, ctx); // Check temp
 		return;
 	}
 
@@ -267,8 +275,7 @@ void start_Oil(struct signal_s *signal, int value, struct execution_context_s *c
 	post_update_command(ctx, "dev.panel10.system_state_code", 4);
 	post_update_command(ctx, "dev.panel10.kb.key.oil_station", 1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k2", 3, &context->in_progress[OIL])) {
-		printf("Feedback error, stopping oil station\n");
-		stop_Oil(signal, value, ctx);
+    control_Oil(signal, value, ctx); // Check temp
 		return;
 	}
 
@@ -281,6 +288,9 @@ void start_Hydratation(struct signal_s *signal, int value, struct execution_cont
 	if(context->in_progress[HYDRATATION]) return;
 	printf("Starting hydratation\n");
 	context->in_progress[HYDRATATION] = STARTING;
+
+	control_Hydratation(signal, value, ctx); // Check temp
+	CHECK(HYDRATATION);
 
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_hydratation", 1);
@@ -302,8 +312,7 @@ void start_Hydratation(struct signal_s *signal, int value, struct execution_cont
 	post_update_command(ctx, "dev.panel10.system_state_code",5);
 	post_update_command(ctx, "dev.panel10.kb.key.hydratation",1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k4", 3, &context->in_progress[HYDRATATION])) {
-		printf("Feedback error, stopping hydratation\n");
-		stop_Hydratation(signal, value, ctx);
+    control_Hydratation(signal, value, ctx); // Check temp
 		return;
 	}
 
@@ -316,6 +325,9 @@ void start_Pumping(struct signal_s *signal, int value, struct execution_context_
 	if(context->in_progress[PUMPING]) return;
 	printf("Starting hydratation\n");
 	context->in_progress[PUMPING] = STARTING;
+
+	control_Pumping(signal, value, ctx); // Check temp
+	CHECK(PUMPING);
 
 	post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_pump", 1);
@@ -335,8 +347,7 @@ void start_Pumping(struct signal_s *signal, int value, struct execution_context_
 
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka6_1", 1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k6", 3, &context->in_progress[PUMPING])) {
-		printf("Feedback error, stopping pumping\n");
-		stop_Pumping(signal, value, ctx);
+    control_Pumping(signal, value, ctx); // Check temp
 		return;
 	}
 
@@ -376,8 +387,7 @@ void start_Organ(struct signal_s *signal, int value, struct execution_context_s 
 	post_update_command(ctx, "dev.panel10.system_state_code",6);
 	post_update_command(ctx, "dev.panel10.kb.key.exec_dev",1);
 	if(!waitForFeedback(ctx, "dev.wago.oc_mdi1.oc_w_k1", 3, &context->in_progress[ORGAN])) {
-		printf("Feedback error, stopping organ\n");
-		stop_Organ(signal, value, ctx);
+    control_Organ(signal, value, ctx); // Check temp
 		return;
 	}
 
@@ -387,15 +397,40 @@ void start_Organ(struct signal_s *signal, int value, struct execution_context_s 
 
 int control_motor(struct execution_context_s *ctx, const char *prefix, const char *config_prefix, const char *name) {
   char signal_name[64];
+  int voltage, max_voltage, min_voltage;
+  const char config_660[] = ".660";
+  const char config_1140[] = ".1140";
+  const char *vprefix = config_660;
   const char *wago_config[] = {
-    ".thermal_relay", ".nominal_current", ".start_current",
-    ".start_time", ".overload_time", ".overturn_time", ".temp", NULL
+    ".nominal_current", ".start_current", ".start_time",
+    ".overload_time",   ".overturn_time", 
+    ".thermal_relay", ".temp", NULL
   };
   int i, value;
 
-  if(signal_get(ctx, "dev.wago.config.voltage") == 0) {
-    printf("Updating WAGO voltage\n");
-    post_write_command(ctx, "dev.wago.config.voltage", signal_get(ctx, "dev.conf.wago.voltage"));
+  voltage = signal_get(ctx, "dev.wago.config.voltage");
+  max_voltage = signal_get(ctx, "dev.wago.config.max_voltage");
+  min_voltage = signal_get(ctx, "dev.wago.config.min_voltage");
+  if(voltage == 0) {
+    voltage = signal_get(ctx, "dev.conf.wago.voltage");
+    printf("Updating WAGO voltage to %d\n", voltage);
+    post_write_command(ctx, "dev.wago.config.voltage", voltage);
+  }
+
+  if(voltage > 660) {
+    vprefix = config_1140;
+  }
+
+  if(max_voltage == 0) {
+    max_voltage = signal_get(ctx, "dev.conf.wago.max_voltage");
+    printf("Updating WAGO max voltage to %d\n", max_voltage);
+    post_write_command(ctx, "dev.wago.config.max_voltage", max_voltage);
+  }
+
+  if(min_voltage == 0) {
+    min_voltage = signal_get(ctx, "dev.conf.wago.min_voltage");
+    printf("Updating WAGO min voltage to %d\n", min_voltage);
+    post_write_command(ctx, "dev.wago.config.min_voltage", min_voltage);
   }
 
   strcpy(signal_name, prefix);
@@ -405,7 +440,7 @@ int control_motor(struct execution_context_s *ctx, const char *prefix, const cha
   int error_map = signal_get(ctx, signal_name);
 
   if(is_enabled && error_map) {
-    printf("%s is enabled and error map is %d\n", prefix, error_map);
+    printf("%s is enabled and error map is %x\n", prefix, error_map);
     return error_map;
   }
 
@@ -414,10 +449,12 @@ int control_motor(struct execution_context_s *ctx, const char *prefix, const cha
     printf("Uploading config for %s\n", prefix);
     for(i = 0; wago_config[i] != NULL; i ++) {
       strcpy(signal_name, config_prefix);
+      if(i < 5) strcat(signal_name, vprefix); // Thermal settings do not need voltage prefix
       strcat(signal_name, wago_config[i]);
       value = signal_get(ctx, signal_name);
+      printf("Reading config %s: %d\n", signal_name, value);
 
-      if(i != 0 && value == 0) {
+      if(strcmp(wago_config[i], ".thermal_relay") && value == 0) {
         printf("Config %s is 0\n", signal_name);
         return error_map;
       }
@@ -448,34 +485,41 @@ int control_motor(struct execution_context_s *ctx, const char *prefix, const cha
 
   strcpy(signal_name, prefix);
   strcat(signal_name, ".error.all");
+  i = 0;
 
-  return signal_get(ctx, signal_name);
+  while((signal_get(ctx, signal_name) != 0) && ++ i < 100) {
+    usleep(1000);
+  }
+  error_map = signal_get(ctx, signal_name);
+  return error_map;
 }
 
 void control_Overloading(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[OVERLOADING]) return;
-	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m6");
-	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m6");
 
-	if(tempRelay) {
-		printf("Overloading temp relay error!\n");
-		stop_Overloading(signal, value, ctx);
-	}
+  int error = control_motor(ctx, "dev.wago.config.m6", "dev.conf.wago.reloader", "dev.wago.oc_mdo1.ka5_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor6.error", error);
+    stop_Overloading(signal, value, ctx);
+  }
 }
 
 void control_Conveyor(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[CONVEYOR]) return;
-	int temp1 = signal_get(ctx, "dev.wago.oc_temp.pt100_m3");
-	int temp2 = signal_get(ctx, "dev.wago.oc_temp.pt100_m4");
-	int tempRelay1 = signal_get(ctx, "dev.wago.ts_m1.rele_T_m3");
-	int tempRelay2 = signal_get(ctx, "dev.wago.ts_m1.rele_T_m4");
 
-	if(tempRelay1 || tempRelay2) {
-		printf("Conveyor temp relay error!\n");
-		stop_Conveyor(signal, value, ctx);
-	}
+  int error = control_motor(ctx, "dev.wago.config.m3", "dev.conf.wago.conveyor1", "dev.wago.oc_mdo1.ka3_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor3.error", error);
+    stop_Conveyor(signal, value, ctx);
+  }
+
+  error = control_motor(ctx, "dev.wago.config.m4", "dev.conf.wago.conveyor2", "dev.wago.oc_mdo1.ka3_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor4.error", error);
+    stop_Conveyor(signal, value, ctx);
+  }
 }
 
 void control_Stars(struct signal_s *signal, int value, struct execution_context_s *ctx) {
@@ -490,35 +534,18 @@ void control_Stars(struct signal_s *signal, int value, struct execution_context_
 void control_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[OIL]) return;
-	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m2");
-	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m2");
 	int oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
 	int oil_level_min = signal_get(ctx, "dev.conf.logic.oil.level.min");
 
   int error = control_motor(ctx, "dev.wago.config.m2", "dev.conf.wago.oil", "dev.wago.oc_mdo1.ka2_1");
   if(error) {
-    post_update_command(ctx, "dev.panel10.motor1.error", error);
+    post_update_command(ctx, "dev.panel10.motor2.error", error);
     stop_Oil(signal, value, ctx);
   }
-
-	if(tempRelay) {
-		printf("Oil station temp relay error!\n");
-		stop_Oil(signal, value, ctx);
-	}
 
   int level_state = check_limits(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
 	if(level_state == LIMIT_MIN_CRIT) {
 		printf("Oil station: oil level low!\n");
-		stop_Oil(signal, value, ctx);
-	}
-
-  level_state = check_limits(ctx, "dev.conf.logic.oil.temp", signal_get(ctx, "dev.485.ad1.adc2_phys_value"));
-	if(level_state == LIMIT_MIN_CRIT) {
-		printf("Oil station: oil temp low!\n");
-		stop_Oil(signal, value, ctx);
-	}
-	else if(level_state == LIMIT_MAX_CRIT) {
-		printf("Oil station: oil temp high!\n");
 		stop_Oil(signal, value, ctx);
 	}
 }
@@ -526,21 +553,18 @@ void control_Oil(struct signal_s *signal, int value, struct execution_context_s 
 void control_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[HYDRATATION]) return;
-	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m5");
-	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m5");
 
-	if(tempRelay) {
-		printf("Organ temp relay error!\n");
-		stop_Hydratation(signal, value, ctx);
-	}
+  int error = control_motor(ctx, "dev.wago.config.m5", "dev.conf.wago.sprinkler", "dev.wago.oc_mdo1.ka4_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor5.error", error);
+    stop_Hydratation(signal, value, ctx);
+  }
 }
 
 void control_Organ(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[ORGAN]) return;
 	if(context->in_progress[HYDRATATION] != RUNNING && !context->diagnostic) stop_Organ(signal, value, ctx);
-	int temp = signal_get(ctx, "dev.wago.oc_temp.pt100_m1");
-	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m1");
 	int waterFlow = signal_get(ctx, "dev.485.ad1.adc3.flow");
 	//READ_SIGNAL("485.ad1.adc3.flow");
 
@@ -552,25 +576,19 @@ void control_Organ(struct signal_s *signal, int value, struct execution_context_
 
 	if(waterFlow) {
 	}
-
-	if(tempRelay) {
-		printf("Organ temp relay error!\n");
-		stop_Organ(signal, value, ctx);
-	}
 }
 
 void control_Pumping(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[PUMPING]) return;
-	int temp = signal_get(ctx, "wago.oc_temp.pt100_m7");
-	int tempRelay = signal_get(ctx, "dev.wago.ts_m1.rele_T_m7");
 	int oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
 	int oil_level_max = signal_get(ctx, "dev.conf.logic.oil.level.max");
 
-	if(tempRelay) {
-		printf("Pumping temp relay error!\n");
-		stop_Pumping(signal, value, ctx);
-	}
+  int error = control_motor(ctx, "dev.wago.config.m7", "dev.conf.wago.pump", "dev.wago.oc_mdo1.ka6_1");
+  if(error) {
+    post_update_command(ctx, "dev.panel10.motor7.error", error);
+    stop_Pumping(signal, value, ctx);
+  }
 
   int level_state = check_limits(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
 	if(level_state == LIMIT_MAX_CRIT) {

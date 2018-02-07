@@ -41,13 +41,13 @@ void parse_response(int socket, struct response_packet_header_s *rh, void *ctx) 
       hash_add(hash, signal_name, current);
     }
 
-    current->s_value = response.re_signal_desc->rsd_value;
-    current->s_rw = response.re_signal_desc->rsd_rw;
-    current->s_register.dr_type = response.re_signal_desc->rsd_reg_type;
-    current->s_register.dr_addr = response.re_signal_desc->rsd_reg_addr;
-    current->s_register.dr_bit = response.re_signal_desc->rsd_reg_bit;
-    current->s_register.dr_device.d_type = response.re_signal_desc->rsd_dev_type;
-    current->s_register.dr_device.d_mb_id = response.re_signal_desc->rsd_dev_mb_id;
+    current->s_value = ntohs(response.re_signal_desc->rsd_value);
+    current->s_rw = ntohs(response.re_signal_desc->rsd_rw);
+    current->s_register.dr_type = ntohs(response.re_signal_desc->rsd_reg_type);
+    current->s_register.dr_addr = ntohs(response.re_signal_desc->rsd_reg_addr);
+    current->s_register.dr_bit = ntohs(response.re_signal_desc->rsd_reg_bit);
+    current->s_register.dr_device.d_type = ntohs(response.re_signal_desc->rsd_dev_type);
+    current->s_register.dr_device.d_mb_id = ntohs(response.re_signal_desc->rsd_dev_mb_id);
   } while(n);
 }
 

@@ -53,12 +53,18 @@ void control_sirens(struct execution_context_s *ctx, int value) {
 
 void process_sirens_timeout(int timeout_msec, volatile int *run_condition, struct execution_context_s *ctx) {
 	struct timespec start, now;
-	control_sirens(ctx, 1);
+  int config_timeout = signal_get(ctx, "dev.conf.sound.beep_time");
+
+  if(config_timeout > 0) {
+    timeout_msec = config_timeout;
+    printf("Setting timeout from config to %d msec\n", timeout_msec);
+  }
 	
+	control_sirens(ctx, 1);
 	clock_gettime(CLOCK_REALTIME, &start);
 	while(*run_condition) {
 		clock_gettime(CLOCK_REALTIME, &now);
-		if((now.tv_sec > (start.tv_sec + 5)) || (now.tv_sec == (start.tv_sec + 5)) && (now.tv_nsec >= start.tv_nsec)) {
+		if((now.tv_sec > (start.tv_sec + timeout_msec / 1000)) || (now.tv_sec == (start.tv_sec + timeout_msec / 1000)) && (now.tv_nsec >= start.tv_nsec)) {
 			printf("Exiting by timeout\n");
 			break;
 		}

@@ -176,7 +176,7 @@ int cmd_create_command(struct cmd_packet_header_s *pkt, int bufsize, char *signa
 }
 
 int packet_receive_command(int socket, void *data, process_command_callback_t callback) {
-  char buffer[1024 * 32];
+  char buffer[1024 * 64];
   struct packet_header_s *hdr = (struct packet_header_s *)buffer;
   int size;
   size = packet_read(socket, buffer, sizeof(buffer));
@@ -191,7 +191,7 @@ int packet_receive_command(int socket, void *data, process_command_callback_t ca
 }
 
 int packet_send_command(struct cmd_packet_header_s *cmd, int socket, void *data, process_command_callback_t cmdcb, process_response_callback_t responsecb) {
-  char buffer[1024 * 32];
+  char buffer[1024 * 64];
   struct packet_header_s *hdr = (struct packet_header_s *)buffer;
   int size;
   size = ntohs(cmd->cph_size);
