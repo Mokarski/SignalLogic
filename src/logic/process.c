@@ -58,17 +58,11 @@ void process_gauge_register(struct execution_context_s *ctx) {
 void Pressure_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
   if(signal) signal->s_value = value;
 
-	int H1 = signal_get(ctx, "dev.485.ad2.adc1_phys_value");
-	int H2 = signal_get(ctx, "dev.485.ad2.adc2_phys_value");
-	int H3 = signal_get(ctx, "dev.485.ad2.adc3_phys_value");
-	int H4 = signal_get(ctx, "dev.485.ad2.adc4_phys_value");
-	int H5 = signal_get(ctx, "dev.485.ad3.adc1_phys_value");
-
-	if(H1 > 0) H1 = (H1/40);
-	if(H2 > 0) H2 = (H2/40);
-	if(H3 > 0) H3 = (H3/25);
-	if(H4 > 0) H4 = (H4/40);
-	if(H5 > 0) H5 = (H5/40);
+	int H1 = adc_to_hr(ctx, "dev.conf.logic.oil.pressure1", signal_get(ctx, "dev.485.ad2.adc1_phys_value"));
+	int H2 = adc_to_hr(ctx, "dev.conf.logic.oil.pressure2", signal_get(ctx, "dev.485.ad2.adc2_phys_value"));
+	int H3 = adc_to_hr(ctx, "dev.conf.logic.oil.pressure3", signal_get(ctx, "dev.485.ad2.adc3_phys_value"));
+	int H4 = adc_to_hr(ctx, "dev.conf.logic.oil.pressure4", signal_get(ctx, "dev.485.ad2.adc4_phys_value"));
+	int H5 = adc_to_hr(ctx, "dev.conf.logic.oil.pressure5", signal_get(ctx, "dev.485.ad3.adc1_phys_value"));
 
 	post_update_command(ctx, "dev.panel10.system_pressure1", H1);
 	post_update_command(ctx, "dev.panel10.system_pressure2", H2);
@@ -91,10 +85,8 @@ void Oil_Show(struct signal_s *signal, int value, struct execution_context_s *ct
 
 void Water_Show(struct signal_s *signal, int value, struct execution_context_s *ctx) {
   if(signal) signal->s_value = value;
-	int water_flow =  signal_get(ctx, "dev.485.ad1.adc3_phys_value");
-	int water_pressure =  signal_get(ctx, "dev.485.ad1.adc4_phys_value");
-	if (water_pressure > 0) water_pressure=(water_pressure/25);
-	if (water_flow > 0) water_flow= (water_flow/4);
+	int water_flow = adc_to_hr(ctx, "dev.conf.logic.water.flow", signal_get(ctx, "dev.485.ad1.adc3_phys_value"));
+	int water_pressure = adc_to_hr(ctx, "dev.conf.logic.water.pressure", signal_get(ctx, "dev.485.ad1.adc4_phys_value"));
 	post_update_command(ctx, "dev.panel10.system_water_flow",water_flow);
 	post_update_command(ctx, "dev.panel10.system_water_pressure",water_pressure);
 }
@@ -439,6 +431,7 @@ int control_motor(struct execution_context_s *ctx, const char *prefix, const cha
   int is_enabled = signal_get(ctx, name);
   int error_map = signal_get(ctx, signal_name);
 
+  //printf("%s: is_enabled: %d; %s: 0x%x\n", prefix, is_enabled, signal_name, error_map);
   if(is_enabled && error_map) {
     printf("%s is enabled and error map is %x\n", prefix, error_map);
     return error_map;
@@ -533,9 +526,8 @@ void control_Stars(struct signal_s *signal, int value, struct execution_context_
 
 void control_Oil(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+	int enabled = signal_get(ctx, "dev.wago.oc_mdo1.ka2_1", 0);
 	if(!context->in_progress[OIL]) return;
-	int oil_level = adc_to_hr(ctx, "dev.conf.logic.oil.level", signal_get(ctx, "dev.485.ad1.adc1_phys_value"));
-	int oil_level_min = signal_get(ctx, "dev.conf.logic.oil.level.min");
 
   int error = control_motor(ctx, "dev.wago.config.m2", "dev.conf.wago.oil", "dev.wago.oc_mdo1.ka2_1");
   if(error) {
@@ -548,16 +540,103 @@ void control_Oil(struct signal_s *signal, int value, struct execution_context_s 
 		printf("Oil station: oil level low!\n");
 		stop_Oil(signal, value, ctx);
 	}
+
+  int temp_state = check_limits(ctx, "dev.conf.logic.oil.temp", signal_get(ctx, "dev.485.ad1.adc2_phys_value"));
+	if(temp_state == LIMIT_MIN_CRIT) {
+		printf("Oil station: oil level low!\n");
+		stop_Oil(signal, value, ctx);
+	}
+	if(temp_state == LIMIT_MAX_CRIT) {
+		printf("Oil station: oil temp high!\n");
+		stop_Oil(signal, value, ctx);
+	}
+
+  if(enabled)
+  {
+    int H1_state = check_limits(ctx, "dev.conf.logic.oil.pressure1", signal_get(ctx, "dev.485.ad2.adc1_phys_value"));
+    int H2_state = check_limits(ctx, "dev.conf.logic.oil.pressure2", signal_get(ctx, "dev.485.ad2.adc2_phys_value"));
+    int H3_state = check_limits(ctx, "dev.conf.logic.oil.pressure3", signal_get(ctx, "dev.485.ad2.adc3_phys_value"));
+    int H4_state = check_limits(ctx, "dev.conf.logic.oil.pressure4", signal_get(ctx, "dev.485.ad2.adc4_phys_value"));
+    int H5_state = check_limits(ctx, "dev.conf.logic.oil.pressure5", signal_get(ctx, "dev.485.ad3.adc1_phys_value"));
+
+    if(H1_state == LIMIT_MIN_CRIT) {
+      printf("Oil station: oil pressure H1 low!\n");
+      stop_Oil(signal, value, ctx);
+    }
+    if(H1_state == LIMIT_MAX_CRIT) {
+      printf("Oil station: oil pressure H1 high!\n");
+      stop_Oil(signal, value, ctx);
+    }
+
+    if(H2_state == LIMIT_MIN_CRIT) {
+      printf("Oil station: oil pressure H2 low!\n");
+      stop_Oil(signal, value, ctx);
+    }
+    if(H2_state == LIMIT_MAX_CRIT) {
+      printf("Oil station: oil pressure H2 high!\n");
+      stop_Oil(signal, value, ctx);
+    }
+
+    if(H3_state == LIMIT_MIN_CRIT) {
+      printf("Oil station: oil pressure H3 low!\n");
+      stop_Oil(signal, value, ctx);
+    }
+    if(H3_state == LIMIT_MAX_CRIT) {
+      printf("Oil station: oil pressure H3 high!\n");
+      stop_Oil(signal, value, ctx);
+    }
+
+    if(H4_state == LIMIT_MIN_CRIT) {
+      printf("Oil station: oil pressure H4 low!\n");
+      stop_Oil(signal, value, ctx);
+    }
+    if(H4_state == LIMIT_MAX_CRIT) {
+      printf("Oil station: oil pressure H4 high!\n");
+      stop_Oil(signal, value, ctx);
+    }
+
+    if(H5_state == LIMIT_MIN_CRIT) {
+      printf("Oil station: oil pressure H5 low!\n");
+      stop_Oil(signal, value, ctx);
+    }
+    if(H5_state == LIMIT_MAX_CRIT) {
+      printf("Oil station: oil pressure H5 high!\n");
+      stop_Oil(signal, value, ctx);
+    }
+  }
 }
 
 void control_Hydratation(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+  int enabled = signal_get(ctx, "dev.wago.oc_mdo1.ka4_1");
 	if(!context->in_progress[HYDRATATION]) return;
 
   int error = control_motor(ctx, "dev.wago.config.m5", "dev.conf.wago.sprinkler", "dev.wago.oc_mdo1.ka4_1");
   if(error) {
     post_update_command(ctx, "dev.panel10.motor5.error", error);
     stop_Hydratation(signal, value, ctx);
+  }
+
+  if(enabled)
+  {
+    int pressure_state = check_limits(ctx, "dev.conf.logic.water.pressure", signal_get(ctx, "dev.485.ad1.adc4_phys_value"));
+    int flow_state = check_limits(ctx, "dev.conf.logic.water.flow", signal_get(ctx, "dev.485.ad1.adc3_phys_value"));
+
+    if(pressure_state == LIMIT_MAX_CRIT) {
+      printf("sprinklers: water pressure too high!\n");
+      stop_Hydratation(signal, value, ctx);
+    } else if(pressure_state == LIMIT_MIN_CRIT) {
+      printf("sprinklers: water pressure too low!\n");
+      stop_Hydratation(signal, value, ctx);
+    }
+
+    if(flow_state == LIMIT_MAX_CRIT) {
+      printf("sprinklers: water flow rate too high!\n");
+      stop_Hydratation(signal, value, ctx);
+    } else if(flow_state == LIMIT_MIN_CRIT) {
+      printf("sprinklers: water flow rate too low!\n");
+      stop_Hydratation(signal, value, ctx);
+    }
   }
 }
 
@@ -655,6 +734,12 @@ void stop_Oil(struct signal_s *signal, int value, struct execution_context_s *ct
 	context->in_progress[OIL] = 0;
   stop_check_limits(ctx, "dev.conf.logic.oil.level");
   stop_check_limits(ctx, "dev.conf.logic.oil.temp");
+  stop_check_limits(ctx, "dev.conf.logic.oil.pressure1");
+  stop_check_limits(ctx, "dev.conf.logic.oil.pressure2");
+  stop_check_limits(ctx, "dev.conf.logic.oil.pressure3");
+  stop_check_limits(ctx, "dev.conf.logic.oil.pressure4");
+  stop_check_limits(ctx, "dev.conf.logic.oil.pressure5");
+
 	post_write_command(ctx, "dev.485.rpdu485.kbl.oil_station_green", 0);
 	post_write_command(ctx, "dev.485.rpdu485c.kbl.oil_station_green", 0);
 	post_write_command(ctx, "dev.485.kb.kbl.start_oil_station", 0);
@@ -671,6 +756,10 @@ void stop_Hydratation(struct signal_s *signal, int value, struct execution_conte
 		stop_Organ(signal, value, ctx);
 	}
 	printf("Stopping hydratation\n");
+
+  stop_check_limits(ctx, "dev.conf.logic.water.flow");
+  stop_check_limits(ctx, "dev.conf.logic.water.pressure");
+
 	post_write_command(ctx, "dev.485.kb.kbl.start_hydratation", 0);
 	post_write_command(ctx, "dev.wago.oc_mdo1.ka4_1", 0);
 	post_write_command(ctx, "dev.wago.oc_mdo1.water1", 0);

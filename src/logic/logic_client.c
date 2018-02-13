@@ -137,7 +137,7 @@ int adc_to_hr(struct execution_context_s *ctx, char const *name, int value) {
     printf("Signal %s not found\n", step_name);
     return value;
   }
-  return value / mult - shift;
+  return value * 10 / mult - shift;
 }
 
 int hr_to_adc(struct execution_context_s *ctx, char const *name, int value) {
@@ -192,6 +192,8 @@ int check_limits(struct execution_context_s *ctx, char *name, int value) {
 
   int mv = adc_to_hr(ctx, name, value);
 
+  //printf("Checking limit %s: min: %d; max: %d; warn min: %d; warn max: %d; current: %d\n", name, min, max, min_warn, max_warn, mv);
+
   if(mv <= min && enabled_min) {
     state = LIMIT_MIN_CRIT;
   }
@@ -224,7 +226,7 @@ int check_limits(struct execution_context_s *ctx, char *name, int value) {
 
   if(limit->state != state) {
     // State changed
-    printf("Current state changed to %d\n", state);
+    printf("Current state of %s changed to %d\n", limit->name, state);
     clock_gettime(CLOCK_REALTIME, &limit->start);
     limit->state = state;
     if(treact != 0) {
