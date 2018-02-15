@@ -7,7 +7,7 @@ CFLAGS+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbu
 CFLAGS_ARM+=-g -Isrc -DMODBUS_ENABLE `pkg-config --cflags /home/opc/Kombain/libmodbus-3.0.6/libmodbus.pc`
 
 PROGRAMS_ARM=signalrouter client_logic client_modbus client_wago client_config
-PROGRAMS=client_virtual client_wago_local $(PROGRAMS_ARM)
+PROGRAMS=sdebug client_wago_local $(PROGRAMS_ARM)
 
 LOGIC_SRC=src/logic/keyboard.c src/logic/process.c src/logic/logic_client.c src/logic/joystick.c src/logic/processor.c src/logic/local.c src/logic/config.c
 
@@ -19,8 +19,8 @@ all: $(PROGRAMS)
 signalrouter: $(COMMON) src/server/signalrouter.c src/server/servercommand.c src/common/subscription.c src/server/serverevents.c
 	$(CC_ARM) $(CFLAGS_ARM) -o $@ $^ $(LDFLAGS_ARM)
 
-client_virtual: $(COMMON) src/client/client.c src/client/clientcommand.c src/virtualclient.c src/common/ringbuffer.c src/client/signalhelper.c
-	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+sdebug: $(COMMON) src/client/client.c src/client/clientcommand.c src/sdebug.c src/common/ringbuffer.c src/client/signalhelper.c
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client_modbus: $(COMMON) src/client/client.c src/client/clientcommand.c src/mbclient.c src/mbdev.c src/common/ringbuffer.c src/client/signalhelper.c
 	#$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)

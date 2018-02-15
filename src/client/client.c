@@ -26,6 +26,7 @@ void *thread_worker(void *arg);
 int main(int argc, char **argv) {
   char line[128];
   char name[128], *prefix;
+  char *saddr;
   int i = 0, cnt = 0, found, running = 1;
   struct signal_s **select_list;
   struct execution_context_s ctx;
@@ -53,8 +54,15 @@ int main(int argc, char **argv) {
     abort();
   }
 
+  if(argc < 2) {
+    printf("Error: no server address specified!\n");
+    printf("Usage: %s <server address> [options]\n", argv[0]);
+  }
+
+  saddr = argv[1];
+
   addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = inet_addr(argv[1]);
+  addr.sin_addr.s_addr = inet_addr(saddr);
   //addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   addr.sin_port = htons(PORT);
 
@@ -76,14 +84,15 @@ int main(int argc, char **argv) {
   context.signals = NULL;
   ring_buffer_init(&context.command_buffer);
   hash_create(&context.hash);
+  context.running = 1;
 
-  client_init(&context, argc, argv);
+  client_init(&context, argc - 1, &argv[1]);
 
   int maxfd = context.event_socket > context.socket ? event[0] : context.socket;
 
   pthread_create(&context.worker_thread, NULL, &thread_worker, &context);
 
-  while(running) {
+  while(context.running) {
     FD_ZERO(&socks);
     FD_SET(event[0], &socks);
     FD_SET(context.socket, &socks);
@@ -143,10 +152,11 @@ int main(int argc, char **argv) {
       }
     }
   }
+
+  pthread_join(context.worker_thread, NULL);
 }
 
 void *thread_worker(void *arg) {
-  ((struct execution_context_s *)arg)->running = 1;
   client_thread_proc((struct execution_context_s *)arg);
   return NULL;
 }

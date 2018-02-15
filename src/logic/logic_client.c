@@ -242,6 +242,7 @@ int check_limits(struct execution_context_s *ctx, char *name, int value) {
       printf("Skip limit due to reaction time\n");
       state = LIMIT_NORM;
     } else {
+      printf("Limits %s printout: L %d LW %d C %d HW %d H %d\n", name, min, min_warn, mv, max_warn, max);
       if((state == LIMIT_MIN_WARN || state == LIMIT_MAX_WARN) && ((diff_msec - treact) < tflash)) {
         // Enable fhash
         post_write_command(ctx, "dev.485.rsrs2.state_sound1_led", 1);
