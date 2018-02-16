@@ -396,7 +396,7 @@ int control_motor(struct execution_context_s *ctx, const char *prefix, const cha
   const char *wago_config[] = {
     ".nominal_current", ".start_current", ".start_time",
     ".overload_time",   ".overturn_time", 
-    ".thermal_relay", ".temp", NULL
+    ".thermal_relay",   ".thermal_enabled", ".voltage_enabled", ".temp", NULL
   };
   int i, value;
 
@@ -447,7 +447,7 @@ int control_motor(struct execution_context_s *ctx, const char *prefix, const cha
       value = signal_get(ctx, signal_name);
       printf("Reading config %s: %d\n", signal_name, value);
 
-      if(strcmp(wago_config[i], ".thermal_relay") && value == 0) {
+      if(strcmp(wago_config[i], ".thermal_enabled") && strcmp(wago_config[i], ".voltage_enabled") && strcmp(wago_config[i], ".thermal_relay") && value == 0) {
         printf("Config %s is 0\n", signal_name);
         return error_map;
       }

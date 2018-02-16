@@ -324,8 +324,30 @@ void process_local_check(struct signal_s *signal, int value, struct execution_co
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 }
 
+void test_all_engines(struct execution_context_s *ctx) {
+  // Show engine states on the panel
+//dev.wago.diag_fb_error
+//dev.wago.diag_bki_error
+}
+
 void do_start_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+  if(context->diagnostic) {
+    context->in_progress[ALL] = 0;
+		post_write_command(ctx, "dev.wago.diag_stop", 0);
+		post_write_command(ctx, "dev.wago.diag_start", 1);
+    post_process(ctx);
+    // Wait until diagnostics starts
+    while(!signal_get(ctx, "dev.wago.diag_start")) {
+      usleep(1000);
+    }
+    // Wait until diagnostics ends
+    while(signal_get(ctx, "dev.wago.diag_start")) {
+      test_all_engines(ctx);
+      usleep(100000);
+    }
+    return;
+  }
 	if(!context->in_progress[ALL]) {
 		return;
 	}
@@ -356,6 +378,7 @@ void do_start_all(struct signal_s *signal, int value, struct execution_context_s
 		start_Organ(signal, value, ctx);
 		break;
 	default:
+    context->in_progress[ALL] = 0;
 		printf("Full start completed!\n");
 		break;
 	}
@@ -389,6 +412,11 @@ void process_local_all(struct signal_s *signal, int value, struct execution_cont
 	}
 
 	context->in_progress[ALL] = 0;
+  if(context->diagnostic) {
+    post_write_command(ctx, "dev.wago.diag_stop", 1);
+    post_process(ctx);
+    return;
+  }
 	stop_all(signal, value, ctx);
 }
 
