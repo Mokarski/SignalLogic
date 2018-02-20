@@ -75,6 +75,9 @@ void process_local_post_register(struct execution_context_s *ctx) {
 	processor_add(ctx, "dev.485.rpdu485c.kei.reloader_up", &process_local_reloader);
 	processor_add(ctx, "dev.485.rpdu485c.kei.reloader_down", &process_local_reloader);
 
+	processor_add(ctx, "dev.485.kb.key.start_check", &process_local_check);
+	processor_add(ctx, "dev.485.kb.key.stop_check", &process_local_check);
+
 	processor_add(ctx, "dev.485.kb.kei1.start_all", &process_local_all);
 	processor_add(ctx, "dev.485.kb.kei1.stop_all", &process_local_all);
 	processor_add(ctx, "dev.485.rpdu485.kei.start_all", &process_local_all);
@@ -320,34 +323,202 @@ void process_local_pumping(struct signal_s *signal, int value, struct execution_
 	stop_Pumping(signal, value, ctx);
 }
 
-void process_local_check(struct signal_s *signal, int value, struct execution_context_s *ctx) {
-	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
-}
-
 void test_all_engines(struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+  int diag_fb_error = signal_get(ctx, "dev.wago.diag_fb_error");
+  int diag_bki_error = signal_get(ctx, "dev.wago.diag_bki_error");
   // Show engine states on the panel
-//dev.wago.diag_fb_error
-//dev.wago.diag_bki_error
+  if(signal_get(ctx, "dev.wago.oc_mdo1.ka1_1") && !(context->engine_diag & (1 << 0))) {
+
+    post_update_command(ctx, "dev.diag.state.m1", signal_get(ctx, "dev.diag.state.m1") | (1 << BIT_CHECK));
+
+    if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k1")) {
+      post_update_command(ctx, "dev.diag.state.m1", signal_get(ctx, "dev.diag.state.m1") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 0);
+      printf("Motor m1 OK\n");
+    }
+    if(diag_fb_error & (1 << 0)) {
+      // Error engine 1
+      post_update_command(ctx, "dev.diag.state.m1", signal_get(ctx, "dev.diag.state.m1") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 0);
+      printf("Motor m1 feedback error\n");
+    }
+    if(diag_bki_error & (1 << 0)) {
+      // Error engine 1
+      post_update_command(ctx, "dev.diag.state.m1", signal_get(ctx, "dev.diag.state.m1") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 0);
+      printf("Motor m1 isolation error\n");
+    }
+  }
+  if(signal_get(ctx, "dev.wago.oc_mdo1.ka2_1") && !(context->engine_diag & (1 << 1))) {
+
+    post_update_command(ctx, "dev.diag.state.m2", signal_get(ctx, "dev.diag.state.m2") | (1 << BIT_CHECK));
+
+    if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k2")) {
+      post_update_command(ctx, "dev.diag.state.m2", signal_get(ctx, "dev.diag.state.m2") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 1);
+      printf("Motor m2 OK\n");
+    }
+    if(diag_fb_error & (1 << 1)) {
+      // Error engine 2
+      post_update_command(ctx, "dev.diag.state.m2", signal_get(ctx, "dev.diag.state.m2") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 1);
+      printf("Motor m2 feedback error\n");
+    }
+    if(diag_bki_error & (1 << 1)) {
+      // Error engine 2
+      post_update_command(ctx, "dev.diag.state.m2", signal_get(ctx, "dev.diag.state.m2") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 1);
+      printf("Motor m2 isolation error\n");
+    }
+  }
+  if(signal_get(ctx, "dev.wago.oc_mdo1.ka3_1") && !(context->engine_diag & (1 << 2))) {
+
+    post_update_command(ctx, "dev.diag.state.m3m4", signal_get(ctx, "dev.diag.state.m3") | (1 << BIT_CHECK));
+
+    if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k3")) {
+      post_update_command(ctx, "dev.diag.state.m3m4", signal_get(ctx, "dev.diag.state.m3") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 2);
+      printf("Motor m3/m4 OK\n");
+    }
+    if(diag_fb_error & (1 << 2)) {
+      // Error engine 3
+      post_update_command(ctx, "dev.diag.state.m3m4", signal_get(ctx, "dev.diag.state.m3") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 2);
+      printf("Motor m3/m4 feedback error\n");
+    }
+    if(diag_bki_error & (1 << 2)) {
+      // Error engine 3
+      post_update_command(ctx, "dev.diag.state.m3m4", signal_get(ctx, "dev.diag.state.m3") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 2);
+      printf("Motor m3/m4 isolation error\n");
+    }
+  }
+  if(signal_get(ctx, "dev.wago.oc_mdo1.ka4_1") && !(context->engine_diag & (1 << 3))) {
+
+    post_update_command(ctx, "dev.diag.state.m5", signal_get(ctx, "dev.diag.state.m5") | (1 << BIT_CHECK));
+
+    if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k4")) {
+      post_update_command(ctx, "dev.diag.state.m5", signal_get(ctx, "dev.diag.state.m5") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 3);
+      printf("Motor m5 OK\n");
+    }
+    if(diag_fb_error & (1 << 3)) {
+      // Error engine 4
+      post_update_command(ctx, "dev.diag.state.m5", signal_get(ctx, "dev.diag.state.m5") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 3);
+      printf("Motor m5 feedback error\n");
+    }
+    if(diag_bki_error & (1 << 3)) {
+      // Error engine 4
+      post_update_command(ctx, "dev.diag.state.m5", signal_get(ctx, "dev.diag.state.m5") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 3);
+      printf("Motor m5 isolation error\n");
+    }
+  }
+  if(signal_get(ctx, "dev.wago.oc_mdo1.ka5_1") && !(context->engine_diag & (1 << 4))) {
+
+    post_update_command(ctx, "dev.diag.state.m6", signal_get(ctx, "dev.diag.state.m6") | (1 << BIT_CHECK));
+
+    if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k5")) {
+      post_update_command(ctx, "dev.diag.state.m6", signal_get(ctx, "dev.diag.state.m6") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 4);
+      printf("Motor m6 OK\n");
+    }
+    if(diag_fb_error & (1 << 4)) {
+      // Error engine 5
+      post_update_command(ctx, "dev.diag.state.m6", signal_get(ctx, "dev.diag.state.m6") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 4);
+      printf("Motor m6 feedback error\n");
+    }
+    if(diag_bki_error & (1 << 4)) {
+      // Error engine 5
+      post_update_command(ctx, "dev.diag.state.m6", signal_get(ctx, "dev.diag.state.m6") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 4);
+      printf("Motor m6 isolation error\n");
+    }
+  }
+  if(signal_get(ctx, "dev.wago.oc_mdo1.ka6_1") && !(context->engine_diag & (1 << 5))) {
+
+    post_update_command(ctx, "dev.diag.state.m7", signal_get(ctx, "dev.diag.state.m7") | (1 << BIT_CHECK));
+
+    if(signal_get(ctx, "dev.wago.oc_mdi1.oc_w_k6")) {
+      post_update_command(ctx, "dev.diag.state.m7", signal_get(ctx, "dev.diag.state.m7") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 5);
+      printf("Motor m7 OK\n");
+    }
+    if(diag_fb_error & (1 << 5)) {
+      // Error engine 6
+      post_update_command(ctx, "dev.diag.state.m7", signal_get(ctx, "dev.diag.state.m7") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 5);
+      printf("Motor m7 feedback error\n");
+    }
+    if(diag_bki_error & (1 << 5)) {
+      // Error engine 6
+      post_update_command(ctx, "dev.diag.state.m7", signal_get(ctx, "dev.diag.state.m7") | (1 << BIT_DONE));
+      context->engine_diag |= (1 << 5);
+      printf("Motor m7 isolation error\n");
+    }
+  }
 }
 
-void do_start_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+void do_check(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+  printf("Starting diagnostics\n");
+  post_update_command(ctx, "dev.diag.state.m1", 0);
+  post_update_command(ctx, "dev.diag.state.m2", 0);
+  post_update_command(ctx, "dev.diag.state.m3m4", 0);
+  post_update_command(ctx, "dev.diag.state.m5", 0);
+  post_update_command(ctx, "dev.diag.state.m6", 0);
+  post_update_command(ctx, "dev.diag.state.m7", 0);
   if(context->diagnostic) {
-    context->in_progress[ALL] = 0;
-		post_write_command(ctx, "dev.wago.diag_stop", 0);
+    context->engine_diag = 0;
 		post_write_command(ctx, "dev.wago.diag_start", 1);
     post_process(ctx);
     // Wait until diagnostics starts
+    printf("Waiting for the diag bit\n");
     while(!signal_get(ctx, "dev.wago.diag_start")) {
       usleep(1000);
     }
     // Wait until diagnostics ends
+    post_write_command(ctx, "dev.485.kb.kbl.led_contrast", 50);
+    post_write_command(ctx, "dev.485.kb.kbl.start_check", 1);
+    printf("Waiting for the diagnostics to finish\n");
     while(signal_get(ctx, "dev.wago.diag_start")) {
       test_all_engines(ctx);
       usleep(100000);
     }
+    printf("Diagnostic finished\n");
+    context->in_progress[DIAG] = 0;
+  }
+}
+
+void process_local_check(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
+  if(value == 0) return;
+  if(!context->diagnostic) {
+    printf("Error! Not in diagnostic mode!\n");
     return;
   }
+	if(!strcmp(signal->s_name, "dev.485.kb.key.start_check")) {
+    if(context->in_progress[DIAG]) {
+      return;
+    }
+    context->in_progress[DIAG] = 1;
+    printf("Launching diagnostic procedure\n");
+    post_write_command(ctx, "dev.wago.diag_start", 1);
+    context->in_progress[ALL] = 1;
+    post_command(&do_check, signal, 0, ctx);
+    post_process(ctx);
+		return;
+	}
+  printf("Stopping diagnostics\n");
+  post_write_command(ctx, "dev.wago.diag_stop", 1);
+  post_process(ctx);
+}
+
+void do_start_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
+	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!context->in_progress[ALL]) {
 		return;
 	}
@@ -391,6 +562,9 @@ void do_stop_all(struct signal_s *signal, int value, struct execution_context_s 
 void process_local_all(struct signal_s *signal, int value, struct execution_context_s *ctx) {
 	struct logic_context_s *context = (struct logic_context_s*)ctx->clientstate;
 	if(!value || function_mode(ctx) == MODE_PUMP) return;
+  if(context->diagnostic) {
+    return;
+  }
 	if(!strcmp(signal->s_name, "dev.485.kb.kei1.start_all")) {
 		if(control_mode(ctx) & LISTEN_LOCAL) {
 			context->in_progress[ALL] = 1;
@@ -412,11 +586,6 @@ void process_local_all(struct signal_s *signal, int value, struct execution_cont
 	}
 
 	context->in_progress[ALL] = 0;
-  if(context->diagnostic) {
-    post_write_command(ctx, "dev.wago.diag_stop", 1);
-    post_process(ctx);
-    return;
-  }
 	stop_all(signal, value, ctx);
 }
 
@@ -435,12 +604,6 @@ static void process_mode_switch(struct signal_s *signal, int value, struct execu
 		if(signal) stop_Pumping(signal, value, ctx);
 		if(signal) stop_Hydraulics(signal, value, ctx);
 		context->function_mode = state & MODE_MASK;
-	}
-
-	if((state & MODE_MASK) == MODE_DIAG) {
-		context->diagnostic = 1;
-	} else {
-		context->diagnostic = 0;
 	}
 
 	switch(state & CONTROL_MASK) {
@@ -462,6 +625,14 @@ static void process_mode_switch(struct signal_s *signal, int value, struct execu
     post_update_command(ctx, "dev.panel10.system_mestno", 0);
     post_update_command(ctx, "dev.panel10.system_mode", 2);
 		break;
+	}
+
+	if((state & MODE_MASK) == MODE_DIAG) {
+		context->diagnostic = 1;
+		context->control_mode = LISTEN_LOCAL;
+	} else {
+    post_write_command(ctx, "dev.wago.diag_stop", 1);
+		context->diagnostic = 0;
 	}
 
 	printf("State: %d\n", state & CONTROL_MASK);

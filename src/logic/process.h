@@ -15,6 +15,7 @@
 #define ORGAN				5
 #define PUMPING			6
 #define ALL					7
+#define DIAG				8
 
 void process_gauge_register(struct execution_context_s *ctx);
 void Pressure_Show(struct signal_s *signal, int value, struct execution_context_s *ctx);

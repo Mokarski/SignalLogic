@@ -13,6 +13,12 @@
 #define MODE_PUMP				(0x02 << 2)
 #define MODE_NORM				(0x03 << 2)
 
+#define BIT_BKI 0
+#define BIT_ON  1
+#define BIT_FB  2
+#define BIT_DONE  3
+#define BIT_CHECK 4
+
 int control_mode(struct execution_context_s *ctx);
 int function_mode(struct execution_context_s *ctx);
 

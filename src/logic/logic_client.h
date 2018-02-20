@@ -47,6 +47,7 @@ struct logic_context_s {
   struct limit_s *limits;
 	struct hash_s  *limits_hash;
   pthread_mutex_t limits_mutex;
+	volatile int 		engine_diag;
 };
 
 int  is_oil_station_started(struct execution_context_s *ctx);
