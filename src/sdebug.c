@@ -82,13 +82,13 @@ void client_init(struct execution_context_s *ctx, int argc, char **argv) {
     {"updates", 0, 0, 'u'},
     {"writes",  0, 0, 'w'},
     {"send",    1, 0, 's'},
-    {"help",    1, 0, 'h'},
+    {"help",    0, 0, 'h'},
     {0, 0, 0, 0}
   };
   int option_index;
   int list = 0, check = 0;
   int write_value = -1;
-  char *signalmask[512] = {"dev.", 0};
+  char *signalmask[512] = {"dev", 0};
   int masks = 0, i;
 
   ctx->clientstate = NULL;
